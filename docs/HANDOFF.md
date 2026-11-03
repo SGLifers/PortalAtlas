@@ -43,3 +43,48 @@ No video/screenshot reconstruction. No deployment requested.
 ## Acceptance remaining
 
 All implementation, extraction, route validation, browser QA, and delivery.
+
+## Milestone 2 — archive decryption, 2026-11-02
+
+- Installed ignored local .NET SDK 10.0.403 and built CUE4Parse commit
+  d3f153e1aac51808b3d5e7d23c1451fcc70bae85, native build skipped.
+- All archives copied to data/install/Paks (about 37 GB). Shipping executable is
+  data/install/Shipping.exe (duplicate original-name copy also exists).
+- Isolated container portal-atlas-assets is stopped; safe to remove after source
+  preparation. Never touch splitgate-selection284-host-1 or other host workers.
+- Static key recovered from callback raw 0x890d360: the LEA at 0x890d375 points to
+  four obfuscated qwords; ROL64 by 8 decodes them, then delegate wrapper at
+  0x4b1ec82 XORs byte 10 with 0x2f. tools/extract_key.py reproduces this with build
+  SHA256 and opcode guards. Key remains ignored in data/key.txt.
+- VALIDATED: original archives mount 215,239 files with GAME_Splitgate2.
+- 1,794 .umap packages indexed in data/maps-index.json; 34 map feature namespaces
+  identified. Portal meshes and Academy_Portals sublevel exist.
+- First real map dump correctly refuses: unversioned properties require mappings.
+  No .usmap exists inside the game archive. Geometry is not yet extracted.
+- Research now targets offline native reflection schemas. No game launch,
+  injection, screenshot, video, or runtime game-memory reading occurred.
+- Tooling experiments live under ignored .tools/. They are investigation artifacts,
+  not the reproducible pipeline yet. Several failed key scans are retained there.
+
+### Reproduce archive listing
+
+```bash
+python3 tools/extract_key.py data/install/Shipping.exe data/key.txt
+ATLAS_KEY_FILE=data/key.txt .tools/dotnet/dotnet \
+  tools/AssetReader/bin/Release/net10.0/AssetReader.dll \
+  data/install/Paks list .umap data/maps-index.json
+```
+
+### Current investigation
+
+- Many native struct/enum registration records recovered statically into
+  data/native-registrations.json. Class tables/property params appear partly in
+  zero-initialized .data, requiring metadata initializer analysis.
+- .tools/inspect_pe.py disassembles one function using .pdata; leaf functions may
+  be omitted from .pdata, so check exact instructions independently.
+- .tools/relrefs.py uses NumPy to find RIP references; run using bundled Python
+  (system Python lacks NumPy). Add --rva for a virtual address in .data/BSS.
+- Installing Unicorn into .tools/python for isolated metadata emulation, if
+  necessary. This must never start the executable or run a game session.
+- .tools/check_native.py verified CUE4Parse's custom AES output against only the
+  standalone stateless AES routine. Do not use it in the delivered application.
