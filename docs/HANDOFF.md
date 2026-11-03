@@ -133,7 +133,7 @@ At390×844 controls fit without horizontal overflow; override reset afterwards.
 JavaScript syntax check passed. No asset recompilation or server restart needed.
 Preview: .local/cutoff-height-preview.jpg. Same local server remains running.
 
-## Follow-up — Academy map-color prototype, 2026-11-03 (in progress)
+## Follow-up — Academy map-color prototype, 2026-11-03 (complete)
 
 User approved a one-map proof of concept for original surface colors. Academy is
 the pilot; broader map rollout and full textures are separate future work. Never
@@ -166,13 +166,34 @@ Server restarted only this owned Atlas checkout to load the endpoint: current
 PID1290306, `.local/server.pid`, same localhost8741. No SplitgateHost, game or
 Portle process was modified.
 
-UI changes currently under verification: Surfaces Neutral/Map colors selector,
+UI changes completed: Surfaces Neutral/Map colors selector,
 browser-local preference, material-slot groups, override-aware instancing, shared
 cutaway planes, neutral fallback and explanatory status. 7 focused Python color
 tests and 5 Node color-validation tests passed. Browser verified colors load,
 neutral preference persists, cutoff20m clips colored surfaces and Academy
 P01→P06 still reports4steps/4.5s/78difficulty across surface modes.
 
-Remaining before final handoff: broader regression tests; unsupported-map fallback,
-mobile layout and console QA; documentation and UI milestone commit; final
-screenshot; leave Academy in color mode with the server running.
+Final verification: 48 Python tests passed (1.785s), including the original graph,
+geometry, API and private-asset checks, plus color endpoint/sidecar checks. Log:
+`.local/tests-colors.log`. Five Node tests passed using `node --test
+tests/colors.test.mjs`; `node --check web/app.js` passed. The reader's final import
+completed with the counts above. Color data and proprietary materials stay ignored.
+
+Browser QA also passed: switching to Abyss disables the color selector with a clear
+not-imported message; returning to Academy restores the color preference. At390×844
+the surface controls fit without horizontal overflow. Top view works, cutaway off
+reveals upper colored geometry, and turning it on restores clipping. Map colors
+use softer preview lighting and filmic tone mapping; Neutral restores the original
+lighting. No console warnings/errors were observed. Viewport override reset.
+
+The browser is left on Academy in color mode, cutoff25.4m, with P01→P06 shown.
+Screenshot `.local/academy-map-colors.png`; neutral comparison
+`.local/academy-neutral.png`. Mark the existing Atlas tab as deliverable before
+ending the turn. Current owned Atlas server remains PID1290306 at localhost8741.
+Backend milestone:8aa6f11; use git log for the final viewer/documentation commit.
+See docs/MAP_COLORS.md for exact behavior, import commands and future limitations.
+
+The requested one-map proof is complete. Full textures/layer evaluation and other
+map color imports are follow-up work; do not describe this preview as pixel-accurate
+game rendering or as color coverage for the entire catalog. Portle and the live
+game host were untouched.

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from './vendor/OrbitControls.js';
+import { linearColor,validSections,surfaceSlots } from './colors.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -19,12 +20,16 @@ renderer.localClippingEnabled=true;
 const world=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(47,1,.1,5000);
 const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.08;controls.maxPolarAngle=Math.PI*.88;
-world.add(new THREE.HemisphereLight(0xd5e7df,0x293038,2.4));
+const hemisphere=new THREE.HemisphereLight(0xd5e7df,0x293038,2.4);world.add(hemisphere);
 const light=new THREE.DirectionalLight(0xd8ede5,2.7);light.position.set(50,100,30);world.add(light);
 const fill=new THREE.DirectionalLight(0x92a5c8,.8);fill.position.set(-50,30,-60);world.add(fill);
 let geometryGroup=new THREE.Group(),wallGroup=new THREE.Group(),edgeGroup=new THREE.Group(),routeGroup=new THREE.Group(),grid=null;
 world.add(geometryGroup,wallGroup,edgeGroup,routeGroup);
 const geometryMaterial=new THREE.MeshLambertMaterial({color:0x576f70,side:THREE.DoubleSide,transparent:true,opacity:.94});
+const surfaceMaterials=new Map();
+let appearance=null;
+let preferredSurfaceMode='colors';
+try{preferredSurfaceMode=localStorage.getItem('portal-atlas-surface-mode')==='neutral'?'neutral':'colors';}catch{}
 const basis=new THREE.Matrix4().set(1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1);
 const vec=p=>new THREE.Vector3(p[0],p[2],p[1]);
 const matrix=rows=>basis.clone().multiply(new THREE.Matrix4().set(...rows.flat())).multiply(basis);
@@ -39,7 +44,24 @@ function readCutoffHeights(){
 function applyCutaway(){
   const enabled=$('cutaway').checked&&Number.isFinite(cutoffHeight);
   $('cutaway-height-controls').disabled=!enabled;
-  geometryMaterial.clippingPlanes=enabled?[new THREE.Plane(new THREE.Vector3(0,-1,0),cutoffHeight)]:[];
+  const planes=enabled?[new THREE.Plane(new THREE.Vector3(0,-1,0),cutoffHeight)]:[];
+  for(const material of [geometryMaterial,...surfaceMaterials.values()])material.clippingPlanes=planes;
+}
+function applySurfaceMode(){
+  const colored=$('surface-mode').value==='colors'&&appearance?.available;
+  renderer.toneMapping=colored?THREE.ACESFilmicToneMapping:THREE.NoToneMapping;
+  hemisphere.intensity=colored ? 0.85 : 2.4;light.intensity=colored ? 1.3 : 2.7;fill.intensity=colored ? 0.3 : 0.8;
+  for(const mesh of geometryGroup.children)mesh.material=colored&&mesh.userData.surfaceMaterials?mesh.userData.surfaceMaterials:geometryMaterial;
+  $('map-colors-status').textContent=!appearance?.available?(appearance?.reason||'Reading surface colors…'):colored?'Simplified asset colors · unresolved surfaces stay neutral':'Neutral overview';
+  $('map-colors-status').title=appearance?.description||$('map-colors-status').textContent;
+}
+function materialFor(id){
+  const rgb=linearColor(appearance?.materials?.[id]);if(!rgb)return geometryMaterial;
+  if(!surfaceMaterials.has(id)){
+    const material=new THREE.MeshLambertMaterial({color:new THREE.Color().setRGB(...rgb),side:THREE.DoubleSide,transparent:true,opacity:.94});
+    material.clippingPlanes=geometryMaterial.clippingPlanes;surfaceMaterials.set(id,material);
+  }
+  return surfaceMaterials.get(id);
 }
 function setCutoffHeight(value,{remember=false,updateNumber=true}={}){
   if(!state.scene||!bounds||!Number.isFinite(value))return;
@@ -55,7 +77,7 @@ function setCutoffHeight(value,{remember=false,updateNumber=true}={}){
 }
 
 function disposeGroup(group) {
-  for(const o of [...group.children]) {group.remove(o);o.geometry?.dispose();if(o.material && o.material!==geometryMaterial) o.material.dispose();}
+  for(const o of [...group.children]) {group.remove(o);o.geometry?.dispose();for(const material of Array.isArray(o.material)?o.material:[o.material])if(material&&material!==geometryMaterial&&![...surfaceMaterials.values()].includes(material))material.dispose();}
 }
 function fitView(mode='orbit') {
   if(!bounds)return;
@@ -169,6 +191,8 @@ async function loadScene(mid) {
     state.scene=s;state.start='';state.end='';state.selected=null;state.blocked.clear();state.route=null;$('wall-search').value='';document.querySelector('.right-panel').scrollTop=0;
     if(new URLSearchParams(location.hash.slice(1)).get('map')!==mid)history.replaceState(null,'','#'+new URLSearchParams({map:mid}));
     for(const g of [geometryGroup,wallGroup,edgeGroup,routeGroup])disposeGroup(g);
+    for(const material of surfaceMaterials.values())material.dispose();surfaceMaterials.clear();appearance=null;
+    $('surface-mode').disabled=true;$('map-colors-status').textContent='Reading surface colors…';
     for(const g of meshCache.values())g.dispose();meshCache.clear();wallMeshes.clear();labelElements.clear();$('node-labels').replaceChildren();$('selection-card').classList.add('hidden');
     if(grid){world.remove(grid);grid.geometry.dispose();grid.material.dispose();}
     $('map-title').textContent=s.name;$('map-title').onclick=()=>$('import-dialog').showModal();$('map-title').title='Choose another arena';
@@ -185,12 +209,17 @@ async function loadScene(mid) {
     $('dataset-details').innerHTML=`<p>${s.source.coverage?.landscapeRead??0} terrain patches · ${s.instances.length.toLocaleString()} mesh instances · ${s.source.geometryTriangles.toLocaleString()} instanced proxy triangles.</p><p>Base walk ${s.model.walkSpeed} m/s${s.model.assetParameters?.walkSpeed?' from the character asset':''}. Gravity and jump behavior are estimated; active mode modifiers are not resolved.</p><p class="${s.issues.length?'issue-count':''}">${s.issues.length} extraction notes. <button class="secondary" id="show-source-notes">Inspect sources</button></p><code>${esc(s.rootPackage)}<br>Revision ${esc(s.revision)}</code>`;
     $('show-source-notes').onclick=showSources;
     $('export-graph').href='/api/export/graph?'+new URLSearchParams({map:s.id,revision:s.revision});
-    const groups=new Map();for(const instance of s.instances){if(!instance.visible)continue;if(!groups.has(instance.mesh))groups.set(instance.mesh,[]);groups.get(instance.mesh).push(instance);}
+    let nextAppearance;
+    try{nextAppearance=await api('/api/colors/'+mid);}catch{nextAppearance={available:false,reason:'Surface colors are unavailable; showing neutral geometry.'};}
+    if(gen!==state.generation)return;
+    appearance=nextAppearance;
+    $('surface-mode').disabled=!appearance.available;$('surface-mode').value=appearance.available?preferredSurfaceMode:'neutral';applySurfaceMode();
+    const groups=new Map();for(const instance of s.instances){if(!instance.visible)continue;const slots=surfaceSlots(appearance?.meshes?.[instance.mesh],appearance?.components?.[instance.name]);const key=JSON.stringify([instance.mesh,slots]);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(instance);}
     const entries=[...groups.entries()];let complete=0,failed=0,cursor=0;
     await Promise.all(Array.from({length:Math.min(10,entries.length)},async()=>{
-      while(cursor<entries.length){const [id,instances]=entries[cursor++];try{const g=await fetchMesh(id,s.meshes.find(m=>m.id===id)?.viewProxy,gen);if(gen!==state.generation)return;const mesh=new THREE.InstancedMesh(g,geometryMaterial,instances.length);instances.forEach((v,i)=>mesh.setMatrixAt(i,matrix(v.matrix)));mesh.computeBoundingSphere();geometryGroup.add(mesh);}catch(e){failed++;}complete++;if(gen===state.generation)loading('Loading '+s.name,`${complete} / ${entries.length} mesh assets${failed?' · '+failed+' unavailable':''}`);}
+      while(cursor<entries.length){const [,instances]=entries[cursor++],id=instances[0].mesh;try{const proxy=s.meshes.find(m=>m.id===id)?.viewProxy,g=await fetchMesh(id,proxy,gen);if(gen!==state.generation)return;const mesh=new THREE.InstancedMesh(g,geometryMaterial,instances.length);const row=appearance?.meshes?.[id];if(!proxy&&validSections(row,g.index.count,g.attributes.position.count)){g.clearGroups();for(const section of row.sections)g.addGroup(section.start,section.count,section.slot);mesh.userData.surfaceMaterials=surfaceSlots(row,appearance?.components?.[instances[0].name]).map(materialFor);}instances.forEach((v,i)=>mesh.setMatrixAt(i,matrix(v.matrix)));mesh.computeBoundingSphere();geometryGroup.add(mesh);}catch(e){failed++;}complete++;if(gen===state.generation)loading('Loading '+s.name,`${complete} / ${entries.length} mesh assets${failed?' · '+failed+' unavailable':''}`);}
     }));
-    if(gen!==state.generation)return;$('loading').classList.add('hidden');geometryGroup.visible=$('show-geometry').checked;
+    if(gen!==state.generation)return;applySurfaceMode();$('loading').classList.add('hidden');geometryGroup.visible=$('show-geometry').checked;
     if(!s.nodes.length)toast('This map has no resolved player portal walls. Check its extraction notes.');
     if(failed)toast(`${failed} mesh assets could not be displayed; the extraction notes remain available.`);
     const hash=new URLSearchParams(location.hash.slice(1));if(hash.get('map')===mid){state.start=hash.get('from')||'';state.end=hash.get('to')||'';$('start-wall').value=state.start;$('end-wall').value=state.end;findRoute();}
@@ -239,6 +268,7 @@ $('start-wall').onchange=findRoute;$('end-wall').onchange=findRoute;$('find-rout
 $('swap-walls').onclick=()=>{const a=$('start-wall').value;$('start-wall').value=$('end-wall').value;$('end-wall').value=a;findRoute();};
 $('show-geometry').onchange=()=>geometryGroup.visible=$('show-geometry').checked;$('cutaway').onchange=applyCutaway;$('show-edges').onchange=drawEdges;
 $('cutoff-slider').oninput=()=>setCutoffHeight($('cutoff-slider').valueAsNumber,{remember:true});
+$('surface-mode').onchange=()=>{preferredSurfaceMode=$('surface-mode').value;try{localStorage.setItem('portal-atlas-surface-mode',preferredSurfaceMode);}catch{}applySurfaceMode();};
 $('cutoff-height').oninput=()=>setCutoffHeight($('cutoff-height').valueAsNumber,{remember:true,updateNumber:false});
 $('cutoff-height').onchange=()=>{if(Number.isFinite($('cutoff-height').valueAsNumber))setCutoffHeight($('cutoff-height').valueAsNumber,{remember:true});else $('cutoff-height').value=cutoffHeight;};
 $('cutoff-auto').onclick=()=>{

@@ -19,6 +19,13 @@ Use the **Cutoff height (m)** slider or number field beneath the layer toggles
 to change the cutaway live. Heights use world Z in metres and are remembered per
 map in this browser. **Auto** restores the map's automatic cutoff height.
 
+**Surfaces → Map colors** enables the Academy color prototype. It uses recovered
+material color/tint parameters, with neutral fallback for unresolved surfaces.
+The selector remembers your preference. Other arenas retain the neutral view until
+their colors are imported. This is a simplified color preview; original textures,
+material masks and game lighting are not reproduced. Routes and cutaway work in
+both modes. See [map colors](docs/MAP_COLORS.md) for scope and import commands.
+
 ## First setup
 
 Requirements: Linux x64, Python 3.12+, Bash, Git, and either the local Docker game
@@ -102,6 +109,7 @@ references, not measured speedrun records or guaranteed executable inputs.
 ```bash
 .venv/bin/python -m unittest discover -s tests -v
 .venv/bin/python tools/audit_maps.py
+node --test tests/colors.test.mjs
 ```
 
 Tests cover geometry intersections/transforms, face continuity, launch arrival
