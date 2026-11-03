@@ -48,9 +48,10 @@ def compile_scene(feature, extracted, output, selected_root=None):
         virtual=source_package(a)
         if virtual:package_data[virtual]=a;path_to_virtual[p['path']]=virtual;virtual_to_path[virtual]=p['path']
     base_worlds=[v for v in package_data if '/_Generated_/' not in v and '/Sublevels/' not in v]
-    roots=[v for v in base_worlds if 'main' in v.rsplit('/',1)[-1].lower()]
+    own_worlds=[v for v in base_worlds if v.startswith('/'+feature+'/')]
+    roots=[v for v in own_worlds if 'main' in v.rsplit('/',1)[-1].lower()]
     if not roots:
-        instances=[v for v in base_worlds if v.rsplit('/',1)[-1].startswith('LI_')]
+        instances=[v for v in own_worlds if v.rsplit('/',1)[-1].startswith('LI_')]
         # Separate cooked variants must never share a graph. Prefer the highest
         # explicit revision suffix, then preserve the selected root in the scene.
         roots=sorted(instances,key=lambda v:(int(re.search(r'_V(\d+)$',v).group(1)) if re.search(r'_V(\d+)$',v) else 0,v),reverse=True)[:1]
@@ -245,6 +246,8 @@ def compile_scene(feature, extracted, output, selected_root=None):
                     'status':'Timing and jump physics estimated; base walking speed is asset-derived when available',
                     'scope':'Direct wall-to-wall placements and supported movement. Launch arrivals are terminal until their outgoing motion is modeled. No live enemy state or inferred corner routes.'},
            'issues':issues,'generatedSeconds':round(time.monotonic()-started,2)}
+    from tools.finalize_scene import finalize
+    scene=finalize(scene,manifest,extracted)
     scene['revision']=hashlib.sha256(json.dumps(scene,sort_keys=True).encode()).hexdigest()[:16]
     output.mkdir(parents=True,exist_ok=True);temp=output/(feature+'.json.tmp');temp.write_text(json.dumps(scene,separators=(',',':'),allow_nan=False));temp.replace(output/(feature+'.json'))
     print('DONE',feature,'edges',len(edges),'seconds',scene['generatedSeconds'],flush=True)

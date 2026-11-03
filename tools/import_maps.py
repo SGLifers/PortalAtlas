@@ -10,7 +10,7 @@ import sys
 import time
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
-EXCLUDED={'MAP_Biome6','MAP_Biome6_Sanctum','MAP_Creative_EmptySpace','MAP_Creative_FlatEarth','MAP_Creative_Simulation','MAP_Creative_WetOcean','MAP_Simulation'}
+EXCLUDED={'MAP_Biome6','MAP_Biome6_Sanctum','MAP_Creative_EmptySpace','MAP_Creative_FlatEarth','MAP_Creative_Simulation','MAP_Creative_WetOcean','MAP_Simulation','MAP_Ozone','MAP_Ozone_Graffiti'}
 
 
 def available():

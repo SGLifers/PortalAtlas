@@ -17,6 +17,7 @@ def audit(path):
     def check(condition,message):
         if not condition:errors.append(message)
     check(scene.get('modelVersion',0)>=5,'Outdated compiled model')
+    check(scene.get('finalizeVersion')==1,'Blocking-volume coverage not finalized')
     check(len(nodes)==len(scene['nodes']),'Duplicate wall IDs')
     levels=set(scene['source']['levels'])
     for level in levels:
@@ -24,7 +25,8 @@ def audit(path):
     coverage=scene['source'].get('coverage',{})
     if scene['source'].get('geometryUsable'):
         check(coverage.get('landscapeExpected')==coverage.get('landscapeRead'),'Missing terrain')
-        for key in ('terrainErrors','missingMeshes','componentErrors','unsupportedProceduralSections'):check(not coverage.get(key),key)
+        for key in ('terrainErrors','missingMeshes','componentErrors','unsupportedProceduralSections','missingStreaming','blockingErrors'):check(not coverage.get(key),key)
+        check(coverage.get('blockingVolumesExpected')==coverage.get('blockingVolumesRead'),'Missing blocking brushes')
     else:check(not scene['edges'],'Incomplete geometry exposes routes')
     incoming=collections.Counter();outgoing=collections.Counter();kinds=collections.Counter()
     for n in nodes.values():

@@ -114,6 +114,10 @@ if (command == "export-terrain") {
     TerrainExporter.Enrich(provider,filter,args.ElementAtOrDefault(3) ?? "data/extracted");
     return 0;
 }
+if (command == "export-brush") {
+    BrushExporter.Enrich(provider,filter,args.ElementAtOrDefault(3) ?? "data/extracted");
+    return 0;
+}
 if (command == "export-feature") {
     FeatureExporter.Run(provider, filter, args[3]);
     return 0;

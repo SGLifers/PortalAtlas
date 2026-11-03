@@ -160,3 +160,51 @@ were added to UI and need a reload for QA.
   test browser background import (creative empty map is a bounded useful test),
   restart final server, final audit/tests, save proof screenshot under .local/,
   write final validation report/docs, commit and remove owned stopped snapshot.
+
+## Milestone 7 — final coverage corrections in progress
+
+Final audit exposed two important gaps, now implemented:
+- FeatureExporter follows cross-feature LevelStreamingAlwaysLoaded references.
+  Virtual feature paths are resolved against the actual archive map-file index.
+  Ozone Night now exports38packages/632meshes and compiles74walls/242edges (12s).
+  MAP_Ozone and MAP_Ozone_Graffiti are shared sublevel libraries without their
+  own root worlds. Excluded from --all-arenas (now25features) and hidden from
+  arena list; still inspectable in import catalog as libraries.
+- BrushExporter recovers actual BlockingVolume transforms/body setups and query
+  responses. tools/finalize_scene.py filters portal rays by PortalLauncher and
+  movement by Pawn channel; PhysicsOnly/disabled brushes do not block queries.
+  Unread brushes or streaming dependencies withhold edges. InvisibleWall profiles
+  stop Pawns while leaving PortalLauncher clear unless explicit responses differ.
+  tools/refresh_coverage.py enriches old manifests and finalizes cached graphs.
+  Compiler invokes finalization for future imports. finalizeVersion1 is required
+  by audit. 39 tests pass including channel response checks.
+
+The original arena batch PID1030707 finished all27 originally selected features.
+Erosion original failure still in report, retry scene is valid. Brush metadata
+batch PID1042009 completed/enriches existing maps; all sampled maps have no brush
+errors (Grit43, Fracture22, Terra13 21). Coverage audit must be rerun after final
+pass. An owned job is running tools/refresh_coverage.py then Terra13 recompile,
+log .local/finalize-all.log then .local/Terra13-final.log (exec session tool result
+supplies sessionID). Terra13 briefly had0edges because its previous import used
+an old manifest before brush metadata arrived; regenerate it to restore candidates.
+Ozone Night was separately rebuilt with dependencies and proper brush metadata.
+Other old scenes are finalized cheaply without recomputing their geometric rays.
+
+Remaining precise tasks:
+1. Check finalize-all and Terra13 completion; inspect any geometryUsable=false
+   on the25 actual arena features, fix or clearly qualify unresolved inputs.
+2. Make import --refresh also account for finalizeVersion if needed; rerun it
+   after coverage finalized to reconcile report quickly (should skip all scenes).
+3. Update audit/tests to verify missing streaming and brush counts; final audit
+   should pass25expectedfeatures. Current tests39 and JS syntax pass.
+4. Restart owned server PID1033774 for latest Host/library metadata code. Own
+   PID/cwd check, SIGTERM and wait socket release before daemon restart.
+5. Browser background import test using Creative EmptySpace (small, zero-node
+   case); verify job completion/error handling. All other UI QA already passed.
+6. Reload stable Academy route, save app screenshot under ignored .local/ using
+   cua bytes, embed it in final reply. Current atlasTab3 and atlasBrowser2;
+   viewport override reset. Do not emit giant AX trees for500wall maps; read
+   relevant DOM selectors. New caller must rewriteDocumentation after compaction.
+7. Update README/ARCHITECTURE for query-specific brush checks and dependency
+   resolution, create final docs/VALIDATION.md from audit counts, commit changes,
+   clean owned stopped portal-atlas-assets container. Keep local server running.

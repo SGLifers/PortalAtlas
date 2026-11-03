@@ -39,7 +39,7 @@ def map_list():
         ready=(DATA/'scenes'/(mid+'.json')).exists()
         row={'id':mid,'name':mid.removeprefix('MAP_').replace('_',' '),'ready':ready}
         if ready:
-            s=scene(mid);row.update(nodes=len(s['nodes']),edges=len(s['edges']),revision=s['revision'],issues=len(s['issues']))
+            s=scene(mid);row.update(nodes=len(s['nodes']),edges=len(s['edges']),revision=s['revision'],issues=len(s['issues']),library='/Sublevels/' in s['rootPackage'],geometryUsable=s['source'].get('geometryUsable',False))
         if mid in JOBS:row['job']=dict(JOBS[mid])
         rows.append(row)
     return rows

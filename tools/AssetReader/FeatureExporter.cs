@@ -19,7 +19,13 @@ public static class FeatureExporter
         Directory.CreateDirectory(output);
         Directory.CreateDirectory(Path.Combine(output, "packages"));
         Directory.CreateDirectory(Path.Combine(output, "meshes"));
-        var packages = provider.Files.Keys.Where(k => k.Contains($"/{feature}/",StringComparison.OrdinalIgnoreCase) && k.EndsWith(".umap",StringComparison.OrdinalIgnoreCase)).Order().ToArray();
+        var packages = provider.Files.Keys.Where(k => k.Contains($"/{feature}/",StringComparison.OrdinalIgnoreCase) && k.EndsWith(".umap",StringComparison.OrdinalIgnoreCase)).Order().ToList();
+        string VirtualMap(string name) {
+            var match=System.Text.RegularExpressions.Regex.Match(name,@"/Maps/(MAP_[^/]+)/Content/(.+)\.umap$");
+            return match.Success ? "/"+match.Groups[1].Value+"/"+match.Groups[2].Value : (name.EndsWith(".umap") ? name[..^5] : name);
+        }
+        var queued=new HashSet<string>(packages.Select(VirtualMap),StringComparer.OrdinalIgnoreCase);
+        var mapFiles=provider.Files.Keys.Where(k=>k.EndsWith(".umap",StringComparison.OrdinalIgnoreCase)).GroupBy(VirtualMap,StringComparer.OrdinalIgnoreCase).ToDictionary(g=>g.Key,g=>g.First(),StringComparer.OrdinalIgnoreCase);
         var meshPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var loadedMeshes = new Dictionary<string,UStaticMesh>(StringComparer.OrdinalIgnoreCase);
         var manifest = new List<object>();
@@ -29,9 +35,11 @@ public static class FeatureExporter
         var components = new List<object>();
         var walls = new List<object>();
         var terrainMeshes = new List<object>();
+        var blockingVolumes=new List<object>();
         PropertyUtil.SearchPropertyInTemplate = true;
-        foreach (var path in packages)
+        for(int packageIndex=0;packageIndex<packages.Count;packageIndex++)
         {
+            var path=packages[packageIndex];
             var id = Id(path);
             var file = Path.Combine(output,"packages",id+".json");
             try
@@ -40,6 +48,7 @@ public static class FeatureExporter
                 var json = JsonConvert.SerializeObject(exports);
                 File.WriteAllText(file,json);
                 TerrainExporter.Add(exports,path,output,components,terrainMeshes,errors);
+                BrushExporter.Add(exports,path,blockingVolumes,errors);
                 foreach (var actor in exports.Where(o => o.ExportType.Contains("PortalWall") && !o.ExportType.Contains("Component") && !o.ExportType.Contains("Visuals")))
                 {
                     try {
@@ -92,6 +101,13 @@ public static class FeatureExporter
                     }
                 }
                 var array = JArray.Parse(json);
+                foreach(var streaming in array.OfType<JObject>().Where(o=>o["Type"]?.Value<string>()=="LevelStreamingAlwaysLoaded"))
+                {
+                    var properties=streaming["Properties"] as JObject;
+                    var reference=properties?.Properties().FirstOrDefault(p=>p.Name.StartsWith("WorldAsset"))?.Value["AssetPathName"]?.Value<string>();
+                    var destination=reference?.Split('.')[0];
+                    if(destination?.StartsWith('/')==true && queued.Add(destination))packages.Add(mapFiles.TryGetValue(destination,out var actual) ? actual : destination);
+                }
                 foreach (var obj in array.Descendants().OfType<JObject>())
                 {
                     var name = obj["ObjectName"]?.Value<string>();
@@ -101,7 +117,7 @@ public static class FeatureExporter
                     meshPaths.Add(dot > 0 ? reference[..dot] : reference);
                 }
                 manifest.Add(new { path, id, exports = array.Count });
-                Console.Error.WriteLine($"PACKAGE {manifest.Count}/{packages.Length} {path}");
+                Console.Error.WriteLine($"PACKAGE {manifest.Count}/{packages.Count} {path}");
             }
             catch (Exception e) { errors.Add(new { path, error=e.Message }); }
         }
@@ -141,7 +157,7 @@ public static class FeatureExporter
             }
             catch (Exception e) { errors.Add(new { path, error=e.Message }); }
         }
-        File.WriteAllText(Path.Combine(output,feature+".json"),JsonConvert.SerializeObject(new { feature, schemaHash, terrainVersion=1, packages=manifest, components, walls, meshes, errors, diagnostics=DiagnosticSink.Events },Formatting.Indented));
+        File.WriteAllText(Path.Combine(output,feature+".json"),JsonConvert.SerializeObject(new { feature, schemaHash, terrainVersion=1, dependencyVersion=1, blockingVersion=1, blockingVolumes, packages=manifest, components, walls, meshes, errors, diagnostics=DiagnosticSink.Events },Formatting.Indented));
         Console.WriteLine(JsonConvert.SerializeObject(new { feature, packages=manifest.Count, meshes=meshes.Count, errors=errors.Count }));
     }
 }
