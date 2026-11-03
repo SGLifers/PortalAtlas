@@ -24,7 +24,7 @@ def blocks(row,channel):
     defaults=(row.get('body') or {}).get('Properties',{}).get('DefaultInstance',{})
     collision=defaults| (row.get('collision') or {})
     for response in collision.get('CollisionResponses',{}).get('ResponseArray',[]):
-        if response.get('Channel')==channel:return str(response.get('Response','')).endswith(('::2','::Block'))
+        if response.get('Channel')==channel:return str(response.get('Response','')).rsplit('::',1)[-1] in ('2','Block','ECR_Block')
     profile=collision.get('CollisionProfileName','')
     if profile.startswith('InvisibleWall') and channel=='PortalLauncher':return False
     return True

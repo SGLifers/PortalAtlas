@@ -55,8 +55,8 @@ one at a time. Large maps take longer because every directed placement is checke
 .venv/bin/python tools/import_maps.py --all-arenas
 ```
 
-`--all-arenas` imports noncreative map features, including some large arenas and
-training spaces. It is not a claim about which maps are in a particular playlist.
+`--all-arenas` imports 25 standalone arena/training features in this build.
+Shared Ozone sublevel libraries are resolved as dependencies of Ozone Night. It is not a claim about which maps are in a particular playlist.
 Completed imports are reused; `--force` extracts and compiles them again.
 `--refresh` upgrades stale compiled models using the existing extracted assets.
 Cooked variants stay separate. The selected root is shown in source details;
@@ -80,7 +80,9 @@ primitives, and render-triangle fallbacks. Terrain uses the heightmap at its
 serialized collision mip with visibility holes. Shared mesh BVHs and an instance
 BVH keep large maps practical. These proxies do not reproduce every game trace
 channel or physics behavior. Coverage checks retain extraction errors and withhold
-routes when required geometry is missing. Portal centers are sampled, so this
+routes when required geometry is missing. Blocking brushes use their Pawn and
+PortalLauncher channel responses; empty and physics-only brushes are distinguished.
+Cross-feature always-loaded levels are resolved from the archive index. Portal centers are sampled, so this
 is not an exhaustive enumeration of every placement on a large wall. Walking
 around corners, forced launch trajectories, and full momentum conservation are
 not inferred. A launch wall can be a route destination; its unmodeled outgoing
@@ -95,12 +97,13 @@ references, not measured speedrun records or guaranteed executable inputs.
 
 ```bash
 .venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python tools/audit_maps.py
 ```
 
 Tests cover geometry intersections/transforms, face continuity, launch arrival
 state, directed search, objectives/filters, API isolation, and real asset graph
-invariants when the private data is available. Browser QA is documented in
-[docs/HANDOFF.md](docs/HANDOFF.md).
+invariants when the private data is available. Browser QA and the imported dataset counts are documented in
+[docs/VALIDATION.md](docs/VALIDATION.md).
 
 ## Repository and data
 

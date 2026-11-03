@@ -18,7 +18,8 @@
    instances/templates/streaming levels, and exports original LOD vertex/index
    data. Resolved package-ID objects are retained because remastered meshes may
    have display paths that cannot be reopened. FastGeo instances are supported.
-   TerrainExporter decodes raw BGRA height/visibility texture bytes at the asset
+   Cross-feature always-loaded map dependencies are queued by their actual
+   archive paths. TerrainExporter decodes raw BGRA height/visibility texture bytes at the asset
    collision mip, validates heights against serialized bounds, and preserves holes.
 6. `extract_movement.py` records serialized base-character speed defaults,
    edition curve-table values, and navigation-agent dimensions with provenance.
@@ -50,7 +51,12 @@ mesh BVHs are referenced by an instance BVH, preserving transforms and avoiding
 world expansion. Terrain coverage, missing meshes, failed component extraction,
 and critical decoder errors gate route generation. Capture-point procedural
 visual components without serialized sections contribute no static geometry.
-No proxy alone proves exact player collision or active-mode physics.
+A final pass checks actual BlockingVolume hulls using their Pawn and
+PortalLauncher channel responses, preserving physics-only and empty-brush states.
+It filters candidates; it does not invent additional floor-supported routes.
+Missing streaming or blocking geometry withholds edges. Visibility mask boundary
+cells and unsupported primitive bounds remain approximations. No proxy alone
+proves exact player collision or active-mode physics.
 
 All edge costs are nonnegative. Dijkstra is used; straight-line distance is not an
 admissible time heuristic in a graph with portal traversal. Difficulty is based on

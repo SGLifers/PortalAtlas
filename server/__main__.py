@@ -112,7 +112,7 @@ class Handler(BaseHTTPRequestHandler):
                 report=DATA/'mappings-report.json';r=json.loads(report.read_text()) if report.exists() else {}
                 return self.respond({'source':'Installed Arena Reloaded assets','archivesReady':(DATA/'key.txt').exists(),
                     'mapPackages':json.loads((DATA/'maps-index.json').read_text()).get('count',0) if (DATA/'maps-index.json').exists() else 0,
-                    'schemaTypes':r.get('types',0),'mapsReady':sum(x['ready'] for x in map_list()),'jobs':JOBS})
+                    'schemaTypes':r.get('types',0),'mapsReady':sum(x['ready'] and not x.get('library',False) for x in map_list()),'jobs':JOBS})
             if path.startswith('/api/maps/'):return self.respond(scene(path.removeprefix('/api/maps/')))
             if re.fullmatch(r'/assets/(meshes|proxies)/[a-f0-9]{20}\.bin',path):return self.file(DATA/'extracted'/path.split('/')[2]/path.rsplit('/',1)[1])
             if path=='/':return self.file(WEB/'index.html')

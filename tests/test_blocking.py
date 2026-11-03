@@ -13,6 +13,9 @@ class BlockingChannelsTests(unittest.TestCase):
         self.assertFalse(blocks({'collision':{'CollisionEnabled':'Unknown::2'}},'Pawn'))
     def test_disabled_actor_is_not_solid(self):
         self.assertFalse(blocks({'enabled':False},'Pawn'))
+    def test_named_block_response_is_supported(self):
+        row={'collision':{'CollisionResponses':{'ResponseArray':[{'Channel':'Pawn','Response':'ECR_Block'}]}}}
+        self.assertTrue(blocks(row,'Pawn'))
 
 
 if __name__=='__main__':unittest.main()

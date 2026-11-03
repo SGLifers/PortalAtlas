@@ -31,7 +31,7 @@ def main():
     for mid in maps:
         scene=ROOT/'data/scenes'/(mid+'.json')
         existing=json.loads(scene.read_text()) if scene.exists() else None
-        if existing and not a.force and (not a.refresh or existing.get('modelVersion',0)>=5):
+        if existing and not a.force and (not a.refresh or (existing.get('modelVersion',0)>=5 and existing.get('finalizeVersion')==1)):
             report[mid]={'status':'ready','walls':len(existing['nodes']),'edges':len(existing['edges']),'geometryUsable':existing['source'].get('geometryUsable',False)}
             print('Already imported',mid,flush=True);continue
         print('Importing',mid,flush=True);started=time.monotonic()
@@ -39,8 +39,11 @@ def main():
             with (local/(mid+'.log')).open('w') as log:
                 manifest=ROOT/'data/extracted'/(mid+'.json')
                 command='export-feature' if a.force or not manifest.exists() else 'export-terrain'
+                if existing and existing['source'].get('coverage',{}).get('missingStreaming'):command='export-feature'
                 if command=='export-feature' or json.loads(manifest.read_text()).get('terrainVersion',0)<1:
                     subprocess.run([str(ROOT/'.tools/dotnet/dotnet'),'tools/AssetReader/bin/Release/net10.0/AssetReader.dll','data/install/Paks',command,mid,'data/extracted'],cwd=ROOT,env=env,check=True,timeout=1800,stdout=log,stderr=log)
+                if json.loads(manifest.read_text()).get('blockingVersion')!=1:
+                    subprocess.run([str(ROOT/'.tools/dotnet/dotnet'),'tools/AssetReader/bin/Release/net10.0/AssetReader.dll','data/install/Paks','export-brush',mid,'data/extracted'],cwd=ROOT,env=env,check=True,timeout=600,stdout=log,stderr=log)
                 subprocess.run([sys.executable,'tools/compile_scene.py',mid],cwd=ROOT,env=env,check=True,timeout=3600,stdout=log,stderr=log)
             data=json.loads(scene.read_text());report[mid]={'status':'ready','walls':len(data['nodes']),'edges':len(data['edges']),'geometryUsable':data['source']['geometryUsable'],'seconds':round(time.monotonic()-started,1)}
         except Exception as exc:report[mid]={'status':'failed','error':str(exc)};fail=True
