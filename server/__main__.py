@@ -45,6 +45,18 @@ def map_list():
     return rows
 
 
+def appearance(mid):
+    current=scene(mid)  # Validate ID and require an existing arena before file access.
+    path=DATA/'appearance'/(mid+'.json')
+    if not path.is_file():return {'available':False,'reason':'Colors have not been imported for this arena.'}
+    data=json.loads(path.read_text())
+    if data.get('format')!='portal-atlas-colors' or data.get('version')!=1 or data.get('map')!=mid:
+        raise ValueError('Invalid map color data')
+    if data.get('sceneRevision')!=current['revision']:
+        return {'available':False,'reason':'Colors need refreshing after the map geometry changed.'}
+    return dict(data,available=True)
+
+
 def import_map(mid):
     if mid not in features():raise ValueError('Unknown installed map')
     with JOB_LOCK:
@@ -113,6 +125,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond({'source':'Installed Arena Reloaded assets','archivesReady':(DATA/'key.txt').exists(),
                     'mapPackages':json.loads((DATA/'maps-index.json').read_text()).get('count',0) if (DATA/'maps-index.json').exists() else 0,
                     'schemaTypes':r.get('types',0),'mapsReady':sum(x['ready'] and not x.get('library',False) for x in map_list()),'jobs':JOBS})
+            if path.startswith('/api/colors/'):return self.respond(appearance(path.removeprefix('/api/colors/')))
             if path.startswith('/api/maps/'):return self.respond(scene(path.removeprefix('/api/maps/')))
             if re.fullmatch(r'/assets/(meshes|proxies)/[a-f0-9]{20}\.bin',path):return self.file(DATA/'extracted'/path.split('/')[2]/path.rsplit('/',1)[1])
             if path=='/':return self.file(WEB/'index.html')

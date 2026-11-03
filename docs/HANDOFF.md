@@ -14,7 +14,7 @@ docs, and asked us to persist until done. This deliverable is complete.
 - All25 pass geometry coverage and graph/buffer audit. 40 tests pass.
 - Browser QA and per-map counts: [VALIDATION.md](VALIDATION.md).
 - Screenshot: .local/portal-atlas-preview.jpg (app QA only, never map input).
-- Keep the server running for the user. Current owned daemon PID1044582;
+- Keep the server running for the user. Current owned daemon PID1290306;
   .local/server.pid and .local/server.log identify it. Verify /proc/PID/cwd and
   command before signaling a process. No background import jobs remain.
 
@@ -132,3 +132,47 @@ Academy25.4. Controls disabled/enabled correctly, no console warnings/errors.
 At390×844 controls fit without horizontal overflow; override reset afterwards.
 JavaScript syntax check passed. No asset recompilation or server restart needed.
 Preview: .local/cutoff-height-preview.jpg. Same local server remains running.
+
+## Follow-up — Academy map-color prototype, 2026-11-03 (in progress)
+
+User approved a one-map proof of concept for original surface colors. Academy is
+the pilot; broader map rollout and full textures are separate future work. Never
+derive a palette from screenshots or assign colors by material-name guesses.
+
+Added an independent `export-colors` AssetReader command and
+`tools/import_colors.py MAP_Academy`. It reads the existing scene and archive
+materials without rewriting scenes, collision buffers, portal nodes or edges.
+Output `data/appearance/MAP_Academy.json` is ignored by Git. Original archive paths
+resolve GameFeature plugin references, including nested dynamic material exports.
+Material slot sections and per-component/FastGeo overrides are preserved.
+
+Current recovered data: all459 meshes,441 referenced materials,179 usable color
+parameters,262 unresolved materials,1,297 component override arrays; no mesh/level
+errors or material exceptions. Raw resolved colors are linear RGB with source
+asset/parameter and method. Layered colors are representative approximations;
+textures, masks, switches, vertex paint and in-game lighting are not evaluated.
+Unresolved surfaces use neutral teal. Colored parameters cover about69% of visible
+instanced mesh triangles (triangle count, not measured surface area).
+
+Build: `CUE4PARSE_SKIP_NATIVE=1 DOTNET_PROCESSOR_COUNT=2 .tools/dotnet/dotnet build
+tools/AssetReader -c Release -m:2` succeeded; existing upstream restore and nullable
+warnings remain as documented earlier. Build log `.local/colors-build.log`.
+Import log `.local/MAP_Academy-colors.log`. CLI shares `.local/import.lock` with
+the geometry importer. Do not overwrite reader DLLs while an import is running.
+
+`/api/colors/<map>` validates the map, sidecar format/version and scene revision.
+Missing/stale color data is optional and keeps neutral geometry available.
+Server restarted only this owned Atlas checkout to load the endpoint: current
+PID1290306, `.local/server.pid`, same localhost8741. No SplitgateHost, game or
+Portle process was modified.
+
+UI changes currently under verification: Surfaces Neutral/Map colors selector,
+browser-local preference, material-slot groups, override-aware instancing, shared
+cutaway planes, neutral fallback and explanatory status. 7 focused Python color
+tests and 5 Node color-validation tests passed. Browser verified colors load,
+neutral preference persists, cutoff20m clips colored surfaces and Academy
+P01→P06 still reports4steps/4.5s/78difficulty across surface modes.
+
+Remaining before final handoff: broader regression tests; unsupported-map fallback,
+mobile layout and console QA; documentation and UI milestone commit; final
+screenshot; leave Academy in color mode with the server running.

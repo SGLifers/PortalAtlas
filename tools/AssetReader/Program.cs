@@ -110,6 +110,10 @@ if (command == "list") {
     return 0;
 }
 OodleHelper.Initialize(Path.GetFullPath(".tools/liboodle-data-shared.so"));
+if (command == "export-colors") {
+    ColorExporter.Run(provider,filter,args.ElementAtOrDefault(3) ?? "data/appearance");
+    return 0;
+}
 if (command == "export-terrain") {
     TerrainExporter.Enrich(provider,filter,args.ElementAtOrDefault(3) ?? "data/extracted");
     return 0;

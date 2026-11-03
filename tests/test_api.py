@@ -41,6 +41,10 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(error.exception.code,403)
     def test_invalid_route_input_has_structured_error(self):
         code,body,_=self.request('/api/route',{'map':'../../secret','start':'x','end':'y'});self.assertEqual(code,400);self.assertIn('error',json.loads(body))
+    def test_optional_color_endpoint_and_invalid_id(self):
+        with patch.object(api,'appearance',return_value={'available':False,'reason':'Not imported'}):
+            code,body,_=self.request('/api/colors/MAP_Test');self.assertEqual(code,200);self.assertFalse(json.loads(body)['available'])
+        self.assertEqual(self.request('/api/colors/../../secret')[0],400)
     def test_exports_are_json_attachments_with_source_and_revision(self):
         s={'id':'MAP_Test','revision':'r1','rootPackage':'/MAP_Test/Main','source':{'kind':'assets'},'model':{},'nodes':[{'id':'A'},{'id':'B'}],'edges':[{'source':'A','target':'B','kind':'walk','seconds':1,'difficulty':10}],'issues':[]}
         with patch.object(api,'scene',return_value=s):
