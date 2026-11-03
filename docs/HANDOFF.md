@@ -116,3 +116,19 @@ these results are planning candidates, not measured gameplay guarantees.
 
 No required work remains. Preserve source qualification and reproducibility in
 future changes. Git history records each implementation milestone.
+
+## Follow-up — configurable cutoff height, 2026-11-03
+
+The user requested configurable cutaway height. Added a live range slider and
+precise number input (world Z metres,0.1m increments), automatic reset and guarded
+browser-local per-map persistence. Cutaway off disables the controls and removes
+the clipping plane; turning it back on retains the chosen height. Only displayed
+geometry is clipped; wall/route overlays and graph calculations are unchanged.
+Slider bounds follow scene height bounds and expand for manually entered values.
+
+Browser checks passed: Academy25.4m persists across reload; slider steps to25.3;
+Auto restores34.9; Abyss initializes20.1 independently; switching back restores
+Academy25.4. Controls disabled/enabled correctly, no console warnings/errors.
+At390×844 controls fit without horizontal overflow; override reset afterwards.
+JavaScript syntax check passed. No asset recompilation or server restart needed.
+Preview: .local/cutoff-height-preview.jpg. Same local server remains running.

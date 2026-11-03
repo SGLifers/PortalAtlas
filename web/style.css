@@ -2,3 +2,14 @@
 .route-endpoints label:last-child{margin-top:24px}
 
 a.secondary{display:inline-block;text-align:center;text-decoration:none;cursor:pointer}.route-actions a{flex:1;font-size:9px;padding:9px 6px}
+
+.layer-tools{flex-direction:column;gap:9px;max-width:calc(100% - 56px)}
+.layer-toggles{display:flex;flex-wrap:wrap;gap:10px 17px}
+.cutaway-height{display:flex;align-items:center;gap:8px;min-width:0;margin:0;padding:8px 0 0;border:0;border-top:1px solid #2d3c41}
+.cutaway-height label{white-space:nowrap;font-size:9px}
+.cutaway-height input[type=range]{width:90px;min-width:35px;flex:1;accent-color:var(--cyan)}
+.cutaway-height input[type=number]{width:66px;background:#1c272d;border:1px solid #40514e;border-radius:4px;padding:4px;color:#d5ebe3;font:10px ui-monospace,monospace}
+.cutaway-height .secondary{padding:4px 7px;font-size:9px}
+.cutaway-height:disabled{opacity:.45}
+.selection-card{bottom:160px}
+@media(max-width:620px){.layer-tools{max-width:calc(100% - 36px)}.layer-toggles{gap:10px 13px}.cutaway-height{gap:6px}.cutaway-height input[type=range]{width:50px}.selection-card{bottom:160px}}

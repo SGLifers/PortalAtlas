@@ -29,7 +29,15 @@
     <div id="viewport"><canvas id="canvas" aria-label="3D arena with selectable portal walls"></canvas><div id="node-labels"></div></div>
     <div id="loading" class="loading"><div class="loading-symbol">◈</div><strong>Reading your arenas</strong><span>Geometry comes from the installed game files.</span></div>
     <div class="view-tools"><button id="choose-arena" class="seg-button" aria-label="Choose arena">Arenas ⌄</button><span></span><button id="view-orbit" class="seg-button active">3D</button><button id="view-top" class="seg-button">Top</button><span></span><button id="reset-view" class="icon-button" title="Reset view (R)">⤢</button></div>
-    <div class="layer-tools"><label><input type="checkbox" id="show-geometry" checked> Geometry</label><label><input type="checkbox" id="show-labels" checked> Labels</label><label><input type="checkbox" id="show-edges"> All angles</label><label><input type="checkbox" id="cutaway" checked> Cutaway</label></div>
+    <div class="layer-tools">
+      <div class="layer-toggles"><label><input type="checkbox" id="show-geometry" checked> Geometry</label><label><input type="checkbox" id="show-labels" checked> Labels</label><label><input type="checkbox" id="show-edges"> All angles</label><label><input type="checkbox" id="cutaway" checked> Cutaway</label></div>
+      <fieldset id="cutaway-height-controls" class="cutaway-height" disabled title="World Z height in metres. Geometry above this height is hidden.">
+        <label for="cutoff-height">Cutoff height (m)</label>
+        <input id="cutoff-slider" type="range" min="0" max="100" step="0.1" value="50" aria-label="Cutoff height slider">
+        <input id="cutoff-height" type="number" step="0.1" value="50" inputmode="decimal">
+        <button id="cutoff-auto" class="secondary" type="button" title="Reset to the automatic height for this map">Auto</button>
+      </fieldset>
+    </div>
     <div class="viewport-bottom"><div class="legend"><span><i class="cyan"></i> Portal wall</span><span><i class="purple"></i> Placement angle</span><span><i class="amber"></i> Movement</span></div><div class="mouse-hint">Drag to orbit <span>·</span> Scroll to zoom <span>·</span> Shift-click to set start</div></div>
     <div id="selection-card" class="selection-card hidden"></div>
   </section>

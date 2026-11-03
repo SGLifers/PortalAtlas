@@ -30,7 +30,29 @@ const vec=p=>new THREE.Vector3(p[0],p[2],p[1]);
 const matrix=rows=>basis.clone().multiply(new THREE.Matrix4().set(...rows.flat())).multiply(basis);
 const wallMeshes=new Map(),labelElements=new Map(),meshCache=new Map();
 let bounds=null,hover=null;
+let cutoffHeight=null;
 const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
+
+function readCutoffHeights(){
+  try{const value=JSON.parse(localStorage.getItem('portal-atlas-cutoff-heights')||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch{return {};}
+}
+function applyCutaway(){
+  const enabled=$('cutaway').checked&&Number.isFinite(cutoffHeight);
+  $('cutaway-height-controls').disabled=!enabled;
+  geometryMaterial.clippingPlanes=enabled?[new THREE.Plane(new THREE.Vector3(0,-1,0),cutoffHeight)]:[];
+}
+function setCutoffHeight(value,{remember=false,updateNumber=true}={}){
+  if(!state.scene||!bounds||!Number.isFinite(value))return;
+  const rounded=Math.round(value*10)/10;if(!Number.isFinite(rounded))return;
+  cutoffHeight=rounded;
+  const low=Math.floor(state.scene.bounds.min[2]),high=Math.ceil(state.scene.bounds.max[2]);
+  $('cutoff-slider').min=Math.min(low,cutoffHeight);$('cutoff-slider').max=Math.max(high,cutoffHeight);
+  $('cutoff-slider').value=cutoffHeight;if(updateNumber)$('cutoff-height').value=cutoffHeight;
+  applyCutaway();
+  if(remember){
+    try{const heights=readCutoffHeights();heights[state.scene.id]=cutoffHeight;localStorage.setItem('portal-atlas-cutoff-heights',JSON.stringify(heights));}catch{}
+  }
+}
 
 function disposeGroup(group) {
   for(const o of [...group.children]) {group.remove(o);o.geometry?.dispose();if(o.material && o.material!==geometryMaterial) o.material.dispose();}
@@ -158,7 +180,8 @@ async function loadScene(mid) {
     const vs=s.nodes.map(n=>vec(n.position));bounds=new THREE.Box3().setFromPoints(vs.length?vs:[new THREE.Vector3(-10,0,-10),new THREE.Vector3(10,0,10)]);fitView();
     const center=bounds.getCenter(new THREE.Vector3());grid=new THREE.GridHelper(300,120,0x344d4d,0x23383e);grid.position.set(center.x,bounds.min.y-1.5,center.z);grid.material.transparent=true;grid.material.opacity=.32;world.add(grid);
     makeWalls();updateWallStyles();
-    geometryMaterial.clippingPlanes=$('cutaway').checked ? [new THREE.Plane(new THREE.Vector3(0,-1,0),bounds.max.y+1)] : [];
+    const savedHeight=readCutoffHeights()[mid];
+    setCutoffHeight(Number.isFinite(savedHeight)?savedHeight:bounds.max.y+1);
     $('dataset-details').innerHTML=`<p>${s.source.coverage?.landscapeRead??0} terrain patches · ${s.instances.length.toLocaleString()} mesh instances · ${s.source.geometryTriangles.toLocaleString()} instanced proxy triangles.</p><p>Base walk ${s.model.walkSpeed} m/s${s.model.assetParameters?.walkSpeed?' from the character asset':''}. Gravity and jump behavior are estimated; active mode modifiers are not resolved.</p><p class="${s.issues.length?'issue-count':''}">${s.issues.length} extraction notes. <button class="secondary" id="show-source-notes">Inspect sources</button></p><code>${esc(s.rootPackage)}<br>Revision ${esc(s.revision)}</code>`;
     $('show-source-notes').onclick=showSources;
     $('export-graph').href='/api/export/graph?'+new URLSearchParams({map:s.id,revision:s.revision});
@@ -214,7 +237,15 @@ async function refreshMaps(){const result=await api('/api/maps');state.maps=resu
 $('map-search').oninput=renderMaps;$('wall-search').oninput=renderWallList;
 $('start-wall').onchange=findRoute;$('end-wall').onchange=findRoute;$('find-route').onclick=findRoute;
 $('swap-walls').onclick=()=>{const a=$('start-wall').value;$('start-wall').value=$('end-wall').value;$('end-wall').value=a;findRoute();};
-$('show-geometry').onchange=()=>geometryGroup.visible=$('show-geometry').checked;$('cutaway').onchange=()=>{geometryMaterial.clippingPlanes=$('cutaway').checked && bounds ? [new THREE.Plane(new THREE.Vector3(0,-1,0),bounds.max.y+1)] : [];};$('show-edges').onchange=drawEdges;
+$('show-geometry').onchange=()=>geometryGroup.visible=$('show-geometry').checked;$('cutaway').onchange=applyCutaway;$('show-edges').onchange=drawEdges;
+$('cutoff-slider').oninput=()=>setCutoffHeight($('cutoff-slider').valueAsNumber,{remember:true});
+$('cutoff-height').oninput=()=>setCutoffHeight($('cutoff-height').valueAsNumber,{remember:true,updateNumber:false});
+$('cutoff-height').onchange=()=>{if(Number.isFinite($('cutoff-height').valueAsNumber))setCutoffHeight($('cutoff-height').valueAsNumber,{remember:true});else $('cutoff-height').value=cutoffHeight;};
+$('cutoff-auto').onclick=()=>{
+  if(!state.scene||!bounds)return;
+  try{const heights=readCutoffHeights();delete heights[state.scene.id];localStorage.setItem('portal-atlas-cutoff-heights',JSON.stringify(heights));}catch{}
+  setCutoffHeight(bounds.max.y+1);
+};
 $('show-labels').onchange=()=>$('node-labels').classList.toggle('hidden',!$('show-labels').checked);
 $('reset-view').onclick=()=>fitView();$('view-top').onclick=()=>fitView('top');$('view-orbit').onclick=()=>fitView();
 $('choose-arena').onclick=()=>$('import-dialog').showModal();$('map-title').style.cursor='pointer';$('import-button').onclick=()=>$('import-dialog').showModal();$('help-button').onclick=()=>$('help-dialog').showModal();

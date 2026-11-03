@@ -10,10 +10,14 @@ Open **http://127.0.0.1:8741** while the local server is running.
 ./run.sh
 ```
 
-The viewer supports orbit and top views, a cutaway of tall exterior geometry,
+The viewer supports orbit and top views, a cutaway with a configurable cutoff height,
 selectable walls, outgoing placement angles, route objectives, difficulty limits,
 unavailable walls, browser-local saved routes, and JSON export. Everything needed
 by the browser is served locally; there are no CDN or account dependencies.
+
+Use the **Cutoff height (m)** slider or number field beneath the layer toggles
+to change the cutaway live. Heights use world Z in metres and are remembered per
+map in this browser. **Auto** restores the map's automatic cutoff height.
 
 ## First setup
 

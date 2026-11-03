@@ -95,3 +95,11 @@ required sources withhold edges.
 Detailed private reports: data/validation-report.json, data/import-report.json.
 Logs: .local/audit-final.log, .local/tests-final.log, .local/setup-verify.log,
 .local/build.log and the per-map import logs. Proprietary map data stays ignored.
+
+## Configurable cutoff follow-up
+
+The cutaway now supports a live height slider, decimal metre input and Auto reset.
+Browser QA verified numeric/slider synchronization, immediate clipping, per-map
+reload/switch persistence, toggle-disabled state and automatic reset. The controls
+fit at390×844 with no horizontal overflow; desktop viewport was restored. No
+console errors/warnings; JavaScript syntax check passed. Route data is unchanged.
