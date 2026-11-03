@@ -34,7 +34,7 @@ def source_package(array):
     return world.get('Package') if world else None
 
 
-def compile_scene(feature, extracted, output):
+def compile_scene(feature, extracted, output, selected_root=None):
     started=time.monotonic();manifest=json.loads((extracted/(feature+'.json')).read_text())
     movement_path=ROOT/'data/movement-model.json'
     movement=json.loads(movement_path.read_text()) if movement_path.exists() else {}
@@ -47,9 +47,18 @@ def compile_scene(feature, extracted, output):
         a=clean(json.loads((extracted/'packages'/(p['id']+'.json')).read_text()))
         virtual=source_package(a)
         if virtual:package_data[virtual]=a;path_to_virtual[p['path']]=virtual;virtual_to_path[virtual]=p['path']
-    roots=[v for v in package_data if 'main' in v.rsplit('/',1)[-1].lower() and '/Sublevels/' not in v]
+    base_worlds=[v for v in package_data if '/_Generated_/' not in v and '/Sublevels/' not in v]
+    roots=[v for v in base_worlds if 'main' in v.rsplit('/',1)[-1].lower()]
+    if not roots:
+        instances=[v for v in base_worlds if v.rsplit('/',1)[-1].startswith('LI_')]
+        # Separate cooked variants must never share a graph. Prefer the highest
+        # explicit revision suffix, then preserve the selected root in the scene.
+        roots=sorted(instances,key=lambda v:(int(re.search(r'_V(\d+)$',v).group(1)) if re.search(r'_V(\d+)$',v) else 0,v),reverse=True)[:1]
     if not roots:roots=[min(package_data,key=lambda v:(v.count('/'),len(v)))] if package_data else []
     root=min(roots,key=lambda v:(v.count('/'),len(v))) if roots else ''
+    if selected_root:
+        if selected_root not in base_worlds:raise ValueError('Selected root is not an extracted base world')
+        root=selected_root
     active={root:np.eye(4)} if root else {};queue=[root] if root else []
     while queue:
         v=queue.pop(0)
@@ -60,9 +69,9 @@ def compile_scene(feature, extracted, output):
                 active[dest]=active[v]@transform(prop.get('LevelTransform'));queue.append(dest)
     # World Partition generated cells are cooked geometry rather than optional
     # menu/lighting sublevels. Preserve their source package paths explicitly.
-    generated=[v for v in package_data if '/_Generated_/' in v]
+    generated=[v for v in package_data if '/_Generated_/' in v and v.split('/_Generated_/')[0] in active]
     if generated:
-        for v in generated:active.setdefault(v,np.eye(4))
+        for v in generated:active.setdefault(v,active[v.split('/_Generated_/')[0]])
     if len(active)==1 and len(package_data)>1 and not generated:
         issues.append({'scope':'streaming','error':'Only the root level is selected; no additional levels were silently enabled.'})
     meshes={m['id']:clean(m) for m in manifest['meshes']};mesh_cache={};shape_cache={}
@@ -128,8 +137,15 @@ def compile_scene(feature, extracted, output):
     shapes={mid:shape_cache[mid][:2] for mid in used_ids}
     print(feature,'walls',len(nodes),'geometry instances',len(geometry),'instanced ray triangles',tri_count,'unique ray triangles',sum(len(v[1]) for v in shapes.values()),flush=True)
     bvh=InstanceBVH(shapes,collision_instances);edges=[];ground={};eyes={}
-    critical_errors=[d for d in manifest.get('diagnostics',[]) if d['level']=='Error' and any(t in d['message'] for t in ['StaticMesh','FastGeo','PortalWall','SceneComponent'])]
-    geometry_usable=tri_count>0 and not critical_errors
+    critical_errors=[d for d in manifest.get('diagnostics',[]) if d['level']=='Error' and any(t in d['message'] for t in ['StaticMesh','FastGeo','PortalWall','SceneComponent','Landscape'])]
+    expected_terrain=sum(o['Type']=='LandscapeComponent' for v in active for o in package_data.get(v,[]))
+    read_terrain=sum(c['type']=='LandscapeHeightfield' and path_to_virtual.get(c['package']) in active for c in manifest.get('components',[]))
+    terrain_errors=[e for e in manifest.get('terrainErrors',[])+manifest.get('errors',[]) if 'terrain' in e and path_to_virtual.get(e['path']) in active]
+    missing_meshes=[c['name'] for c in manifest.get('components',[]) if path_to_virtual.get(c['package']) in active and c['mesh'] not in meshes]
+    component_errors=[e for e in manifest.get('errors',[]) if path_to_virtual.get(e['path']) in active and any(k in e for k in ('component','fastGeo','wall'))]
+    procedural_sections=[o['Name'] for v in active for o in package_data.get(v,[]) if o['Type']=='ProceduralMeshComponent' and o.get('Properties',{}).get('ProcMeshSections')]
+    coverage={'landscapeExpected':expected_terrain,'landscapeRead':read_terrain,'terrainErrors':terrain_errors,'missingMeshes':missing_meshes,'componentErrors':component_errors,'unsupportedProceduralSections':procedural_sections}
+    geometry_usable=tri_count>0 and not critical_errors and expected_terrain==read_terrain and not terrain_errors and not missing_meshes and not component_errors and not procedural_sections
     if not geometry_usable:issues.append({'scope':'routing','error':'Geometry extraction is incomplete; routes have been withheld.'})
     for n in nodes:
         for side in n['sides']:
@@ -216,13 +232,14 @@ def compile_scene(feature, extracted, output):
                 f.write(np.array([len(verts),idx.size],dtype='<u4').tobytes());f.write((verts*100).astype('<f4').tobytes());f.write(idx.astype('<u4').tobytes())
             row['viewProxy']=True
         mesh_rows.append(row)
-    scene={'id':feature,'modelVersion':4,'name':feature.removeprefix('MAP_').replace('_',' '),'rootPackage':root,
+    scene={'id':feature,'modelVersion':5,'name':feature.removeprefix('MAP_').replace('_',' '),'rootPackage':root,
            'nodes':nodes,'edges':edges,'instances':geometry,
            'meshes':mesh_rows,'overviewGeometry':'collision hulls with render fallback' if overview else 'render meshes',
            'bounds':{'min':bounds_lo.tolist(),'max':bounds_hi.tolist()},
            'source':{'kind':'installed game assets','image':json.loads((ROOT/'tools/versions.json').read_text())['game_image'],
                      'executableSha256':json.loads((ROOT/'tools/versions.json').read_text())['game_executable_sha256'],
-                     'levels':list(active),'packages':len(manifest['packages']),'geometryTriangles':tri_count,'uniqueGeometryTriangles':sum(len(v[1]) for v in shapes.values()),'geometryUsable':geometry_usable},
+                     'levels':list(active),'packages':len(manifest['packages']),'geometryTriangles':tri_count,'uniqueGeometryTriangles':sum(len(v[1]) for v in shapes.values()),'geometryUsable':geometry_usable,
+                     'coverage':coverage,'availableRoots':base_worlds},
            'model':{'walkSpeed':walk_speed,'airSpeed':7.,'gravity':9.8,'jumpVelocity':4.2,'approachOffset':1.1,
                     'assetParameters':movement,'navRadius':radius,'navStepHeight':step_height,
                     'status':'Timing and jump physics estimated; base walking speed is asset-derived when available',
@@ -235,5 +252,5 @@ def compile_scene(feature, extracted, output):
 
 
 if __name__=='__main__':
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('feature');args=parser.parse_args()
-    compile_scene(args.feature,ROOT/'data/extracted',ROOT/'data/scenes')
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('feature');parser.add_argument('--root');args=parser.parse_args()
+    compile_scene(args.feature,ROOT/'data/extracted',ROOT/'data/scenes',args.root)

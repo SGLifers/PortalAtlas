@@ -28,6 +28,7 @@ public static class FeatureExporter
         var schemaHash=mappingPath is null ? "none" : Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(mappingPath)));
         var components = new List<object>();
         var walls = new List<object>();
+        var terrainMeshes = new List<object>();
         PropertyUtil.SearchPropertyInTemplate = true;
         foreach (var path in packages)
         {
@@ -38,6 +39,7 @@ public static class FeatureExporter
                 var exports = provider.LoadPackage(path).GetExports().ToArray();
                 var json = JsonConvert.SerializeObject(exports);
                 File.WriteAllText(file,json);
+                TerrainExporter.Add(exports,path,output,components,terrainMeshes,errors);
                 foreach (var actor in exports.Where(o => o.ExportType.Contains("PortalWall") && !o.ExportType.Contains("Component") && !o.ExportType.Contains("Visuals")))
                 {
                     try {
@@ -103,7 +105,7 @@ public static class FeatureExporter
             }
             catch (Exception e) { errors.Add(new { path, error=e.Message }); }
         }
-        var meshes = new List<object>();
+        var meshes = new List<object>(terrainMeshes);
         foreach (var path in meshPaths.Order())
         {
             var id = Id(path);
@@ -139,7 +141,7 @@ public static class FeatureExporter
             }
             catch (Exception e) { errors.Add(new { path, error=e.Message }); }
         }
-        File.WriteAllText(Path.Combine(output,feature+".json"),JsonConvert.SerializeObject(new { feature, schemaHash, packages=manifest, components, walls, meshes, errors, diagnostics=DiagnosticSink.Events },Formatting.Indented));
+        File.WriteAllText(Path.Combine(output,feature+".json"),JsonConvert.SerializeObject(new { feature, schemaHash, terrainVersion=1, packages=manifest, components, walls, meshes, errors, diagnostics=DiagnosticSink.Events },Formatting.Indented));
         Console.WriteLine(JsonConvert.SerializeObject(new { feature, packages=manifest.Count, meshes=meshes.Count, errors=errors.Count }));
     }
 }

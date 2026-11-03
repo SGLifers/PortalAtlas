@@ -18,23 +18,34 @@ def available():
 
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('maps',nargs='*');p.add_argument('--all-arenas',action='store_true');p.add_argument('--force',action='store_true');a=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('maps',nargs='*');p.add_argument('--all-arenas',action='store_true');p.add_argument('--force',action='store_true');p.add_argument('--refresh',action='store_true',help='Reuse extracted geometry and refresh stale scene models');a=p.parse_args()
     maps=[m for m in available() if m not in EXCLUDED] if a.all_arenas else (a.maps or ['MAP_Academy','MAP_Abyss','MAP_Grit','MAP_Oasis'])
     unknown=set(maps)-set(available())
     if unknown:raise SystemExit('Unknown map features: '+', '.join(sorted(unknown)))
     env=os.environ.copy();env.update(ATLAS_KEY_FILE=str(ROOT/'data/key.txt'),ATLAS_MAPPING_FILE=str(ROOT/'data/mappings.json'),DOTNET_PROCESSOR_COUNT='2',OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1')
     local=ROOT/'.local';local.mkdir(exist_ok=True);report={};fail=False
+    import fcntl
+    lock=(local/'import.lock').open('w')
+    try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+    except BlockingIOError:raise SystemExit('Another import process is active')
     for mid in maps:
         scene=ROOT/'data/scenes'/(mid+'.json')
-        if scene.exists() and not a.force:print('Already imported',mid,flush=True);continue
+        existing=json.loads(scene.read_text()) if scene.exists() else None
+        if existing and not a.force and (not a.refresh or existing.get('modelVersion',0)>=5):
+            report[mid]={'status':'ready','walls':len(existing['nodes']),'edges':len(existing['edges']),'geometryUsable':existing['source'].get('geometryUsable',False)}
+            print('Already imported',mid,flush=True);continue
         print('Importing',mid,flush=True);started=time.monotonic()
         try:
             with (local/(mid+'.log')).open('w') as log:
-                subprocess.run([str(ROOT/'.tools/dotnet/dotnet'),'tools/AssetReader/bin/Release/net10.0/AssetReader.dll','data/install/Paks','export-feature',mid,'data/extracted'],cwd=ROOT,env=env,check=True,timeout=1800,stdout=log,stderr=log)
+                manifest=ROOT/'data/extracted'/(mid+'.json')
+                command='export-feature' if a.force or not manifest.exists() else 'export-terrain'
+                if command=='export-feature' or json.loads(manifest.read_text()).get('terrainVersion',0)<1:
+                    subprocess.run([str(ROOT/'.tools/dotnet/dotnet'),'tools/AssetReader/bin/Release/net10.0/AssetReader.dll','data/install/Paks',command,mid,'data/extracted'],cwd=ROOT,env=env,check=True,timeout=1800,stdout=log,stderr=log)
                 subprocess.run([sys.executable,'tools/compile_scene.py',mid],cwd=ROOT,env=env,check=True,timeout=3600,stdout=log,stderr=log)
-            data=json.loads(scene.read_text());report[mid]={'status':'ready','walls':len(data['nodes']),'edges':len(data['edges']),'seconds':round(time.monotonic()-started,1)}
+            data=json.loads(scene.read_text());report[mid]={'status':'ready','walls':len(data['nodes']),'edges':len(data['edges']),'geometryUsable':data['source']['geometryUsable'],'seconds':round(time.monotonic()-started,1)}
         except Exception as exc:report[mid]={'status':'failed','error':str(exc)};fail=True
         (ROOT/'data/import-report.json').write_text(json.dumps(report,indent=2));print(mid,report[mid],flush=True)
+    (ROOT/'data/import-report.json').write_text(json.dumps(report,indent=2))
     return 1 if fail else 0
 
 

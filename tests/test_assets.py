@@ -39,6 +39,21 @@ class AssetIntegrationTests(unittest.TestCase):
         for name in ['Actor','SceneComponent','StaticMeshComponent','PrimitiveComponent','Vector','GF1047PortalWall']:
             self.assertIn(name,schemas)
         self.assertEqual([p['name'] for p in schemas['Vector']['properties']],['X','Y','Z'])
+    def test_selected_variant_does_not_mix_generated_worlds(self):
+        for path in SCENES:
+            scene=json.loads(path.read_text())
+            if scene.get('modelVersion',0)<5:continue
+            levels=set(scene['source']['levels'])
+            for level in levels:
+                if '/_Generated_/' in level:self.assertIn(level.split('/_Generated_/')[0],levels,path.stem)
+    def test_terrain_coverage_gates_routes(self):
+        for path in SCENES:
+            scene=json.loads(path.read_text());coverage=scene['source'].get('coverage')
+            if not coverage:continue
+            if scene['source']['geometryUsable']:
+                self.assertEqual(coverage['landscapeExpected'],coverage['landscapeRead'],path.stem)
+                self.assertFalse(coverage['terrainErrors']);self.assertFalse(coverage['missingMeshes'])
+            else:self.assertEqual(scene['edges'],[],path.stem)
 
 
 if __name__=='__main__':unittest.main()

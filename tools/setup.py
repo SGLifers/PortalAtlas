@@ -40,6 +40,8 @@ run(['git','-C',cue,'diff','--exit-code','--quiet'])
 if not (ROOT/'.tools/liboodle-data-shared.so').exists():
     archive=ROOT/'.tools/oodle.zip';download(f"https://github.com/WorkingRobot/OodleUE/releases/download/{VERSIONS['oodle_release']}/gcc-x64-release.zip",archive)
     with zipfile.ZipFile(archive) as z:(ROOT/'.tools/liboodle-data-shared.so').write_bytes(z.read('lib/liboodle-data-shared.so'))
+if hashlib.sha256((ROOT/'.tools/liboodle-data-shared.so').read_bytes()).hexdigest()!=VERSIONS['oodle_linux_sha256']:
+    raise SystemExit('Unexpected Oodle runtime hash')
 prepare()
 key=recover(ROOT/'data/install/Shipping.exe');keyfile=ROOT/'data/key.txt';keyfile.write_text(key.hex());keyfile.chmod(0o600)
 if not (ROOT/'data/mappings.json').exists():

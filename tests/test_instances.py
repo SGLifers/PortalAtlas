@@ -19,6 +19,11 @@ class InstancedGeometryTests(unittest.TestCase):
                 if h:
                     self.assertAlmostEqual(h[0],expected[0],places=4);np.testing.assert_allclose(h[1],expected[1],atol=1e-5);self.assertEqual(h[3],expected[3])
     def test_empty_instance_scene(self):self.assertIsNone(InstanceBVH({},[]).hit([0,0,0],[1,1,1]))
+    def test_zero_scale_preserves_flattened_collision_plane(self):
+        vertices=box([-1,-1,-1],[1,1,1]);matrix=np.eye(4);matrix[2,2]=0;matrix[2,3]=3
+        bvh=InstanceBVH({'cube':(vertices,BOX_INDICES)},[{'id':7,'mesh':'cube','matrix':matrix.tolist()}])
+        hit=bvh.hit([0,0,6],[0,0,0]);self.assertIsNotNone(hit)
+        self.assertAlmostEqual(hit[0],3);self.assertEqual(hit[3],7)
     def test_serialized_simple_box_dimensions_and_center(self):
         meta={'body':{'Properties':{'AggGeom':{'BoxElems':[{'X':200,'Y':400,'Z':100,'Center':{'X':100}}]}}}}
         vertices,indices,kind=simple_collision(meta,np.zeros((0,3)),np.zeros((0,3),dtype=np.uint32))

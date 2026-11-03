@@ -58,6 +58,9 @@ one at a time. Large maps take longer because every directed placement is checke
 `--all-arenas` imports noncreative map features, including some large arenas and
 training spaces. It is not a claim about which maps are in a particular playlist.
 Completed imports are reused; `--force` extracts and compiles them again.
+`--refresh` upgrades stale compiled models using the existing extracted assets.
+Cooked variants stay separate. The selected root is shown in source details;
+`tools/compile_scene.py MAP_Name --root /MAP_Name/OtherWorld` selects an alternative.
 
 ## Model and limits
 
@@ -72,9 +75,12 @@ Completed imports are reused; `--force` extracts and compiles them again.
 - **Costs:** fastest minimizes estimated seconds; easiest minimizes accumulated
   effort; balanced combines both. The summary difficulty is the hardest step.
 
-Ray tests use **render triangles as a collision proxy**, not the game's exact
-trace channels or physics collision. Partial geometry errors are retained; critical
-geometry decoding failures withhold routes. Portal centers are sampled, so this
+Ray tests use asset simple collision hulls, conservative bounds for unsupported
+primitives, and render-triangle fallbacks. Terrain uses the heightmap at its
+serialized collision mip with visibility holes. Shared mesh BVHs and an instance
+BVH keep large maps practical. These proxies do not reproduce every game trace
+channel or physics behavior. Coverage checks retain extraction errors and withhold
+routes when required geometry is missing. Portal centers are sampled, so this
 is not an exhaustive enumeration of every placement on a large wall. Walking
 around corners, forced launch trajectories, and full momentum conservation are
 not inferred. A launch wall can be a route destination; its unmodeled outgoing
@@ -98,7 +104,7 @@ invariants when the private data is available. Browser QA is documented in
 
 ## Repository and data
 
-- `server/`: local HTTP API, triangle BVH, route search.
+- `server/`: local HTTP API, mesh/instance BVHs, route search.
 - `web/`: browser UI and locally vendored Three.js.
 - `tools/AssetReader/`: CUE4Parse asset/mesh exporter.
 - `tools/reflection_emulator.py`, `native_metadata.py`, `build_mappings.py`:

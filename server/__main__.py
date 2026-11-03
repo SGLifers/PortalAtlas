@@ -49,6 +49,12 @@ def import_map(mid):
     if mid not in features():raise ValueError('Unknown installed map')
     with JOB_LOCK:
         if any(j['status']=='running' for j in JOBS.values()):raise ValueError('Another map is being imported')
+        import fcntl
+        local=ROOT/'.local';local.mkdir(exist_ok=True)
+        lock=(local/'import.lock').open('a')
+        try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError:
+            lock.close();raise ValueError('A map import batch is already running; try again after it finishes')
         JOBS[mid]={'status':'running','phase':'Reading map packages','started':time.time()}
     def worker():
         try:
@@ -58,9 +64,10 @@ def import_map(mid):
             with (local/(mid+'.log')).open('w') as log:
                 subprocess.run([str(dotnet),str(reader),str(DATA/'install/Paks'),'export-feature',mid,str(DATA/'extracted')],cwd=ROOT,env=env,stdout=log,stderr=log,check=True,timeout=1800)
                 JOBS[mid]['phase']='Checking angles and movement'
-                subprocess.run([sys.executable,str(ROOT/'tools/compile_scene.py'),mid],cwd=ROOT,stdout=log,stderr=log,check=True,timeout=3600)
+                subprocess.run([sys.executable,str(ROOT/'tools/compile_scene.py'),mid],cwd=ROOT,env=env,stdout=log,stderr=log,check=True,timeout=3600)
             JOBS[mid].update(status='complete',phase='Ready',finished=time.time())
         except Exception as exc:JOBS[mid].update(status='failed',phase=str(exc),finished=time.time())
+        finally:lock.close()
     threading.Thread(target=worker,daemon=True).start()
     return JOBS[mid]
 
@@ -101,7 +108,10 @@ class Handler(BaseHTTPRequestHandler):
             if size<2 or size>100000:return self.respond({'error':'Invalid request size'},400)
             payload=json.loads(self.rfile.read(size));path=urlparse(self.path).path
             if path=='/api/route':
-                result=route(scene(payload['map']),payload['start'],payload['end'],payload.get('objective','fastest'),payload.get('kinds'),payload.get('blocked',[]),float(payload.get('maxDifficulty',100)))
+                current=scene(payload['map'])
+                if payload.get('revision') and payload['revision']!=current['revision']:
+                    return self.respond({'error':'Map data changed. Reopen the arena to use its refreshed graph.'},409)
+                result=route(current,payload['start'],payload['end'],payload.get('objective','fastest'),payload.get('kinds'),payload.get('blocked',[]),float(payload.get('maxDifficulty',100)))
                 return self.respond(result)
             if path=='/api/import':return self.respond(import_map(payload['map']),202)
             return self.respond({'error':'Unknown endpoint'},404)

@@ -102,3 +102,32 @@ remain visible. Setup scripts reproduce dependencies, key, mappings, and index.
 cua_repl binding `tab` is iab tab2 URL above. On context continuation call
 `await cua.rewriteDocumentation()` before using it. Reload after code edits.
 Sites skill already read for local preview only; no publication.
+
+## Milestone 5 — terrain and separate variants
+
+TerrainExporter now successfully decodes262 Fracture patches from raw BGRA asset
+heightmaps at the serialized collision mip, including visibility masks. Heights
+are independently checked against CachedLocalBox. Hole boundaries are an
+approximation (cells touching invisible samples are removed). Missing terrain,
+mesh buffers, failed components and critical diagnostics withhold route edges.
+Generated cells now belong only to the selected active root; Inferno V2 and the
+older world no longer overlap. `--root` can select a different extracted world.
+ModelVersion5 is rebuilding across all27 selected arena features using
+`tools/import_maps.py --all-arenas --refresh`. Current batch PID1030707, log
+.local/all-arenas-refresh.log. The original paused batch was terminated cleanly.
+A standalone Fracture refresh completed:457walls/2086edges in225s. Batch may
+repeat that map once because it reached it before the standalone publish.
+Erosion exposed a zero-scale matrix; InstanceBVH now preserves flattened world
+triangles instead of failing or dropping possible collision. Owned retry running
+with log .local/Erosion-final.log (retained exec session33492).
+Server now .venv Python PID1030989; restart after backend changes. It briefly
+failed during restart because the previous process had not released its socket;
+second start is serving correctly. Browser fresh iab tab3 binding atlasTab works;
+old tab2 is an unreachable error page and can be closed. Academy routeP01→P06
+now foursteps/4.5estimatedseconds/peak78. Saved route exists from QA.
+32 tests pass. Reader now directly pins Microsoft.Bcl.Memory9.0.14, the patched
+version (https://github.com/advisories/GHSA-73j8-2gch-69rq); upstream CUE's project
+restore still warns about its own9.0.0 reference, while our reader's deps resolve
+9.0.14. Final setup/build, UI export/filter/import/responsive QA, data coverage
+report, documentation and commits remain. Source/graph exports and aim yaw/pitch
+were added to UI and need a reload for QA.

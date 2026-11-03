@@ -18,9 +18,12 @@
    instances/templates/streaming levels, and exports original LOD vertex/index
    data. Resolved package-ID objects are retained because remastered meshes may
    have display paths that cannot be reopened. FastGeo instances are supported.
+   TerrainExporter decodes raw BGRA height/visibility texture bytes at the asset
+   collision mip, validates heights against serialized bounds, and preserves holes.
 6. `extract_movement.py` records serialized base-character speed defaults,
    edition curve-table values, and navigation-agent dimensions with provenance.
-7. `compile_scene.py` selects always-loaded levels and cooked generated cells,
+7. `compile_scene.py` selects one root variant, its always-loaded levels and cooked
+   generated cells,
    transforms geometry to world metres, identifies portal walls, builds a BVH,
    and checks directed angle and movement edges. Scene files publish atomically.
 
@@ -41,9 +44,13 @@ placing an entry portal on the arrival wall. Incoming portal traversal to a laun
 wall is terminal while its forced outgoing motion remains unmodeled.
 
 Direct movement checks use floor support and sampled height/lateral clearance.
-The render mesh is a geometric proxy: neither an AI navmesh nor visual geometry
-alone proves exact player collision. Critical geometry decoder failures produce
-no routes rather than an unobstructed graph.
+Simple collision convexes/boxes are preferred; curved primitive bounds and render
+triangles remain proxies. Collision metadata filters disabled geometry. Shared
+mesh BVHs are referenced by an instance BVH, preserving transforms and avoiding
+world expansion. Terrain coverage, missing meshes, failed component extraction,
+and critical decoder errors gate route generation. Capture-point procedural
+visual components without serialized sections contribute no static geometry.
+No proxy alone proves exact player collision or active-mode physics.
 
 All edge costs are nonnegative. Dijkstra is used; straight-line distance is not an
 admissible time heuristic in a graph with portal traversal. Difficulty is based on
@@ -54,7 +61,9 @@ geometry and assumed execution costs; no observed human success rates exist.
 The Python server binds only `127.0.0.1`. It serves `web/`, compiled scene JSON,
 and explicitly named mesh buffers. It does not expose arbitrary local files or
 installation/key paths. Write requests reject foreign origins. Map import uses
-allowlisted indexed feature IDs and structured subprocess arguments.
+allowlisted indexed feature IDs and structured subprocess arguments. An OS file
+lock prevents overlapping CLI/browser imports. Route requests can require an
+exact scene revision to avoid mixing a browser graph with a refreshed server graph.
 
 Three.js converts Unreal Z-up metres to browser Y-up coordinates. Instanced
 meshes reuse geometry; wall overlays and route edges remain selectable. Browser

@@ -118,12 +118,20 @@ class InstanceBVH:
         for row in instances:
             tree=self.shapes[row['mesh']]
             if not tree.nodes:continue
-            matrix=np.asarray(row['matrix'],dtype=float);inverse=np.linalg.inv(matrix)
+            matrix=np.asarray(row['matrix'],dtype=float);key=row['mesh']
+            try:inverse=np.linalg.inv(matrix)
+            except np.linalg.LinAlgError:
+                # Zero scale appears in cooked assets. A flattened mesh can
+                # still be a collidable plane, so preserve its world triangles.
+                vertices,indices=shapes[key];key=(key,row['id'])
+                tree=TriangleBVH(points(vertices,matrix)[indices]);self.shapes[key]=tree
+                if not tree.nodes:continue
+                matrix=np.eye(4);inverse=np.eye(4)
             a,b=tree.nodes[0][:2]
             corners=np.array([[x,y,z] for x in (a[0],b[0]) for y in (a[1],b[1]) for z in (a[2],b[2])])
             world_points=points(corners,matrix)
             lo.append(world_points.min(axis=0));hi.append(world_points.max(axis=0))
-            self.instances.append((row['id'],row['mesh'],matrix,inverse))
+            self.instances.append((row['id'],key,matrix,inverse))
         if not self.instances:return
         self._lo=np.asarray(lo);self._hi=np.asarray(hi);self._centers=(self._lo+self._hi)*.5
         self._build(np.arange(len(self.instances)),8)
