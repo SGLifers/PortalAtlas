@@ -1,179 +1,104 @@
-# Handoff
+# Handoff — 2026-11-03
 
-## User request
+## Authorized scope
 
-Build a local web app using the game assets already on this system. Portal walls
-are destination nodes; angles/movement are directed edges. Create a separate Git
-repository, commit milestones, document handoffs, and persist until complete.
-No video/screenshot reconstruction. No deployment requested.
+Build a local web app from installed game assets. Portal walls are nodes; portal
+placement angles and movement are directed edges with time/difficulty costs.
+Create an independent repo, commit milestones, maintain handoffs, finish the app.
+No videos/screenshots as map input; no deployment. Never touch SplitgateHost or
+its live workers. Browser QA screenshots are only verification of our app.
 
-## State — 2026-11-02 America/Los_Angeles
+## Repository and runtime
 
-- New repository: /home/lambchopper67/Documents/ChatGPT/Splitgate/PortalAtlas
-- Branch: codex/portal-atlas
-- Source located in immutable Docker image splitgate-host:private-game-payload
-  (2a8c85545524), under /game/PortalWars2/Content/Paks.
-- Archives: pakchunk0/100/200/300/400/500, plus 400optional and global.
-  Both .pak and UE IoStore .utoc/.ucas exist, about 40 GB total.
-- Separate live SplitgateHost worker exists: do not touch it or its repository.
-- No game has been launched, no game files modified, no map geometry extracted.
-- Host lacks node/npm/dotnet on PATH. Bundled Node:
-  /home/lambchopper67/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node
-- Python3 and Docker are available. Free disk approximately 466 GB.
-- Read the Sites skill and local preview reference. Local-only workflow applies.
+- Repo: /home/lambchopper67/Documents/ChatGPT/Splitgate/PortalAtlas
+- Branch: codex/portal-atlas; no remote. Last initial viewer commit 6d7c5d4.
+- Run `./run.sh`; local app http://127.0.0.1:8741. Python .venv installed.
+- Node: /home/lambchopper67/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node
+- CUE4Parse pinned d3f153e1aac51808b3d5e7d23c1451fcc70bae85 in ignored
+  .tools/CUE4Parse, .NET SDK10.0.403 in .tools/dotnet.
+- Build: `CUE4PARSE_SKIP_NATIVE=1 DOTNET_PROCESSOR_COUNT=2 .tools/dotnet/dotnet build tools/AssetReader -c Release -m:2`
+- Tests: `.venv/bin/python -m unittest discover -s tests -v` (29 pass).
+- Keep OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 for compilers.
 
-## Next actions
+## Asset provenance and recovery
 
-1. Inspect archive headers and obtain a compatible CUE4Parse CLI/runtime.
-2. Mount archives in an isolated read-only container or copy only needed assets
-   into ignored data/. Determine whether encryption/mappings are required.
-3. Extract one real map with portal walls and geometry, then implement the web
-   viewer and graph pipeline. Preserve exact source/version/provenance.
-4. Validate and commit each meaningful milestone; update this file.
+Source immutable Docker image splitgate-host:private-game-payload SHA256
+2a8c855455249cf97a452345047e67b7f2a8c66c695784d891b6be13f8d61399.
+Copied /game/PortalWars2/Content/Paks into ignored data/install/Paks (35.6GiB).
+Shipping.exe SHA256 619e4753e2f68c721764a19afe61b01daee723beaa946ef94ec6bb4e0c7c5747.
+Separate stopped snapshot container portal-atlas-assets can be removed at finish.
+Do not operate any running game container.
 
-## Research pointers
+`tools/extract_key.py` statically decodes the guarded callback and wrapper;
+secret remains data/key.txt (ignored). GAME_Splitgate2 mounts 215,239 files.
+data/maps-index.json indexes 1,794 map packages across 34 feature namespaces.
 
-- https://github.com/FabianFG/CUE4Parse
-- https://github.com/4sval/FModel
-- https://www.gildor.org/smf/index.php?topic=9225.0
-  Maintainer reports UE5.5 and a game-specific override; do not assume vanilla
-  parsing or encryption compatibility without testing the local build.
-- https://github.com/sinnafuls/cue4parse-mcp (release binary is Windows only).
+No .usmap is supplied. `tools/reflection_emulator.py` uses isolated Unicorn
+emulation of bounded static helpers, intercepting FName; never runs the PE
+entrypoint or calls host OS APIs. `tools/native_metadata.py` and
+`tools/build_mappings.py` recover 14,358 native type schemas and 2,431 enums.
+52 rejected schemas retained in reports; essential geometry schemas validated.
+Mappings and overlays stay ignored in data/. Some nongeometry camera warnings
+remain visible. Setup scripts reproduce dependencies, key, mappings, and index.
 
-## Acceptance remaining
+## Implemented
 
-All implementation, extraction, route validation, browser QA, and delivery.
+- C# reader exports full feature packages, portal actors/root transforms,
+  mesh buffers/body setups, conventional/instanced/FastGeo static components.
+- Python compiler follows always-loaded streaming and WorldPartition cells,
+  builds portal apertures, transformed collision proxies, directed edges.
+- Shared mesh BVHs plus instance TLAS avoid expanding millions of triangles.
+  Uses simple convex/box collision and render fallback; skips NoCollision.
+  Large-map overview uses actual asset collision hulls for manageable rendering.
+- Local web server with confined asset APIs and background allowlisted imports.
+- Three.js 3D/top/cutaway viewer, wall picking/list, directed graph, route
+  objectives, blocked walls, difficulty/movement filters, save and JSON export.
+- Dijkstra respects wall face continuity and launch-wall arrival state.
+- Base walking speed5.4m/s, sprint multiplier1.5, agentradius.45m/height2m/
+  step.3m recovered from actual assets/config in data/movement-model.json.
+  Gravity/jump/placement timings remain explicit estimates; mode overrides not
+  resolved. Routes are geometric candidates, not measured gameplay guarantees.
+- 29 geometry/routing/HTTP/source tests. Initial Academy browser route/save,
+  top/cutaway QA passed. Final all-map and import/error/export QA still pending.
 
-## Milestone 2 — archive decryption, 2026-11-02
+## Active jobs — verify ownership before stopping anything
 
-- Installed ignored local .NET SDK 10.0.403 and built CUE4Parse commit
-  d3f153e1aac51808b3d5e7d23c1451fcc70bae85, native build skipped.
-- All archives copied to data/install/Paks (about 37 GB). Shipping executable is
-  data/install/Shipping.exe (duplicate original-name copy also exists).
-- Isolated container portal-atlas-assets is stopped; safe to remove after source
-  preparation. Never touch splitgate-selection284-host-1 or other host workers.
-- Static key recovered from callback raw 0x890d360: the LEA at 0x890d375 points to
-  four obfuscated qwords; ROL64 by 8 decodes them, then delegate wrapper at
-  0x4b1ec82 XORs byte 10 with 0x2f. tools/extract_key.py reproduces this with build
-  SHA256 and opcode guards. Key remains ignored in data/key.txt.
-- VALIDATED: original archives mount 215,239 files with GAME_Splitgate2.
-- 1,794 .umap packages indexed in data/maps-index.json; 34 map feature namespaces
-  identified. Portal meshes and Academy_Portals sublevel exist.
-- First real map dump correctly refuses: unversioned properties require mappings.
-  No .usmap exists inside the game archive. Geometry is not yet extracted.
-- Research now targets offline native reflection schemas. No game launch,
-  injection, screenshot, video, or runtime game-memory reading occurred.
-- Tooling experiments live under ignored .tools/. They are investigation artifacts,
-  not the reproducible pipeline yet. Several failed key scans are retained there.
+- `.local/server.pid` initially1021624, server log .local/server.log. Running
+  system Python has old modules; restart using .venv after checking pid/cwd.
+- `.local/import.pid` initially1023611: `tools/import_maps.py --all-arenas --force`.
+  It is progressing through27 arena features; log .local/all-arenas.log and
+  per-map .local/MAP_*.log. Do not overwrite reader DLL during reader execution.
+- Old Fracture flat triangle expansion exceeded15GB; ONLY that owned compiler
+  was terminated. New instance compiler successfully completed Fracture in212s:
+  457 active walls/2052 edges,18,816 collisioninstances,1,005,314 unique triangles.
+  import-report still records the cancelled attempt; reconcile after final pass.
+- First imported maps have stale models. Recompile every scene after final
+  geometry fixes; source assets need re-export only for new terrain support.
 
-### Reproduce archive listing
+## Immediate next work / accuracy gap
 
-```bash
-python3 tools/extract_key.py data/install/Shipping.exe data/key.txt
-ATLAS_KEY_FILE=data/key.txt .tools/dotnet/dotnet \
-  tools/AssetReader/bin/Release/net10.0/AssetReader.dll \
-  data/install/Paks list .umap data/maps-index.json
-```
+1. Landscape terrain is NOT YET exported. Fracture has262 LandscapeComponents,
+   262 LandscapeHeightfieldCollisionComponents,132 FastGeoContainers. Need
+   decode heightmap plus visibility holes or cooked collision heightfield.
+   Until supported, withhold route claims on maps with missing terrain.
+   CUE Landscape collision reader currently discards cookedcollision bytes.
+   ULandscapeComponent exposes GetHeightmap(), HeightmapScaleBias,
+   ComponentSizeQuads/SubsectionSizeQuads/NumSubsections and weightmap allocations.
+   Need raw UTexture2D mips PF_B8G8R8A8 (no screenshot reconstruction).
+2. ProceduralMeshComponents present in Fracture are capture point visuals with
+   no serialized vertex sections in sampled export. Inspect and classify;
+   retain diagnostics rather than silently omitting possible collision.
+3. Current compiler modelVersion4; update version when geometry changes.
+   Add --recompile mode to importer, run all stale maps, refresh batch report.
+4. Enforce Oodle hash already recorded in versions.json in setup.py, validate
+   setup path. Review source coverage/diagnostic gates for every map.
+5. Restart local server, finish browser QA (endpoints spacing, proxy maps,
+   imports, filters/blocked walls, exports/saved routes, narrow viewport), save
+   app verification screenshot, run appropriate tests, commit final work.
+6. Update README/ARCHITECTURE for final collision/terrain coverage and limits.
 
-### Current investigation
+## Browser session
 
-- Many native struct/enum registration records recovered statically into
-  data/native-registrations.json. Class tables/property params appear partly in
-  zero-initialized .data, requiring metadata initializer analysis.
-- .tools/inspect_pe.py disassembles one function using .pdata; leaf functions may
-  be omitted from .pdata, so check exact instructions independently.
-- .tools/relrefs.py uses NumPy to find RIP references; run using bundled Python
-  (system Python lacks NumPy). Add --rva for a virtual address in .data/BSS.
-- Installing Unicorn into .tools/python for isolated metadata emulation, if
-  necessary. This must never start the executable or run a game session.
-- .tools/check_native.py verified CUE4Parse's custom AES output against only the
-  standalone stateless AES routine. Do not use it in the delivered application.
-
-## Milestone 3 — real map viewer and graph, 2026-11-02
-
-### Running app
-
-- Local server: `python3 -m server --port 8741` (retained exec session 42500).
-- URL: http://127.0.0.1:8741
-- CUA browser tab 2 in iab browser 2 is open for QA, variable `tab` exists.
-- UI loads installed asset geometry, wall nodes, directed graph; selects routes
-  by time/difficulty; supports unavailable walls, movement filters, local saved
-  routes, JSON export, map import jobs, source notes, 3D/top views.
-- Just added default cutaway clipping and aspect-aware camera fit after first
-  browser screenshot showed the arena's exterior shell obstructing the view.
-  Reload browser before checking those changes.
-
-### Real extracted datasets
-
-- Academy: 69 walls, 360 edges, 33 active levels.
-- Abyss: 58 walls, 206 edges.
-- Grit: 75 walls, 221 edges.
-- Oasis: 76 walls, 685 edges.
-- Data ignored under data/extracted/ (per-package JSON, mesh binary+metadata,
-  feature manifests), data/scenes/ (compiled web scene+graph).
-- All coordinates and map geometry are from game assets. No synthetic maps,
-  videos, screenshots, or game process used for map reconstruction.
-- Compilers follow always-loaded levels, then use generated World Partition
-  cells where present. Dynamic pregame/menu levels are excluded.
-- `tools/compile_scene.py` runs with bundled Python (NumPy), about 20–35 sec/map.
-  Render geometry is an explicitly labeled collision proxy. Movement/jump/time
-  parameters are estimates. Launch momentum and paths around corners are not
-  yet modeled; do not describe them as verified.
-- `server/routing.py` uses Dijkstra over wall + face state; wall remains the
-  user-facing node. Avoids silently switching faces mid-route.
-- `FeatureExporter` retains direct mesh objects resolved through package IDs;
-  re-opening remastered meshes by displayed path can fail. This fixed hundreds
-  of false missing-mesh errors for Abyss/Oasis. Oasis now exports 532 meshes with
-  zero caught extraction exceptions. Full Serilog deserialization errors still
-  need to be included in manifests.
-
-### Offline reflection breakthrough
-
-- Native property definitions use FNames initialized by small helper routines.
-- `.tools/emulate_metadata.py` emulates isolated `.CRT$XCU` helpers in Unicorn,
-  not the game entrypoint, intercepting FName storage and security-cookie check.
-  91,894 helpers: 72,637 complete, 19,257 fail; captures 37,687 unique names.
-- Intermediate data/reflection-data.bin is a private initialized .data overlay;
-  data/reflection-names.json holds the synthetic lookup used for schema recovery.
-- `.tools/parse_metadata.py`, `.tools/build_mappings.py` derive native schemas
-  into data/mappings.json. Currently 9,770 types; 4,638 schemas rejected rather
-  than inventing missing data. Essential SceneComponent/PrimitiveComponent/
-  StaticMeshComponent/Actor/GF1047PortalWall schemas decode real geometry.
-- Blueprint schemas are read by CUE4Parse from assets. One recurring nongeometry
-  PortalWarsWorldSettings error remains (native schema initialization failure).
-- IMPORTANT: reflection scripts currently remain prototype files in ignored
-  .tools/. Make them tracked, clean, reproducible tools before delivery.
-- Class param counts: `(counts >> 15) & 2047`, not just >>15 (interfaces share
-  the word). Type reference resolution follows native construction routines.
-- Native property ArrayDim/Offset are uint16 at +48/+50, GenFlags at +24.
-- CUE4Parse prints property index suffixes like RelativeLocation[27] even for
-  scalars; compiler strips those numeric suffixes.
-
-### Remaining before completion
-
-1. Browser QA after cutaway/camera fix; exercise route search, save/export,
-   map switching/import, filters, and narrow viewport; fix observed failures.
-2. Promote/refactor offline reflection and setup tooling into tracked source.
-3. Record all extraction warnings/errors; improve needed schemas if possible.
-4. Meaningful geometry/routing/integration tests and asset-derived invariants.
-5. Expand installed map coverage with the importer; report unsupported map
-   layouts honestly (World Partition/FastGeo may need additional extraction).
-6. README, setup/run scripts, provenance/limitations, final commits and handoff.
-7. Clean up owned stopped portal-atlas-assets container; keep live host alone.
-
-### Runtime paths
-
-Bundled Python (with NumPy):
-`/home/lambchopper67/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3`
-Bundled Node:
-`/home/lambchopper67/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node`
-Local .NET: `.tools/dotnet/dotnet`
-Local Python extras: `.tools/python` (capstone, pefile, unicorn).
-
-### Important verification limits
-
-- No automated in-game movement execution or measured difficulty calibration.
-- Graph currently uses center-target direct placement rays, floor-supported
-  straight movement and conservative approximate jump arcs. It is not an
-  exhaustive enumeration of all possible portal placements or momentum routes.
-- Failure notes and source package paths are visible in the UI and exports.
+cua_repl binding `tab` is iab tab2 URL above. On context continuation call
+`await cua.rewriteDocumentation()` before using it. Reload after code edits.
+Sites skill already read for local preview only; no publication.

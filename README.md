@@ -1,9 +1,112 @@
 # Portal Atlas
 
-Local web application for analyzing Splitgate: Arena Reloaded maps directly from
-the installed game assets. Portal walls are nodes; placement angles and movement
-paths are directed edges with explicit cost and confidence.
+A local web app that reads **Splitgate: Arena Reloaded's installed game assets**
+into a 3D map and directed portal-route graph. **Portal walls are destination
+nodes; placement angles and movement are edges.**
 
-Implementation is in progress. See [docs/HANDOFF.md](docs/HANDOFF.md) for the
-current reproducible state and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the
-data model and validation requirements.
+Open **http://127.0.0.1:8741** while the local server is running.
+
+```bash
+./run.sh
+```
+
+The viewer supports orbit and top views, a cutaway of tall exterior geometry,
+selectable walls, outgoing placement angles, route objectives, difficulty limits,
+unavailable walls, browser-local saved routes, and JSON export. Everything needed
+by the browser is served locally; there are no CDN or account dependencies.
+
+## First setup
+
+Requirements: Linux x64, Python 3.12+, Bash, Git, and either the local Docker game
+image recorded in `tools/versions.json` or a legitimate PC installation. The
+current machine's installation is already copied and indexed under ignored
+`data/`. Do not run SplitgateHost or launch the game for this application.
+
+```bash
+./setup.sh
+.venv/bin/python tools/import_maps.py
+./run.sh
+```
+
+Setup installs isolated Python tools and the pinned .NET SDK/CUE4Parse reader.
+The first run downloads development dependencies; subsequent analysis is offline.
+It copies approximately **35.6 GiB** of archives from a stopped, read-only Docker
+snapshot. It never starts Steam or the game and never touches existing workers.
+The temporary snapshot is removed after copying.
+
+For an installation outside Docker, prepare it before setup:
+
+```bash
+python3 tools/prepare_assets.py --game-dir '/absolute/path/to/Splitgate 2'
+./setup.sh
+```
+
+Extraction is pinned to the installed executable's SHA256. An unknown build
+stops key/schema recovery instead of silently using incompatible offsets.
+
+## Import maps
+
+The initial command imports Academy, Abyss, Grit, and Oasis. The browser's
+**Import installed map** dialog lists every indexed map feature and runs imports
+one at a time. Large maps take longer because every directed placement is checked.
+
+```bash
+.venv/bin/python tools/import_maps.py MAP_Karman_Station
+.venv/bin/python tools/import_maps.py --all-arenas
+```
+
+`--all-arenas` imports noncreative map features, including some large arenas and
+training spaces. It is not a claim about which maps are in a particular playlist.
+Completed imports are reused; `--force` extracts and compiles them again.
+
+## Model and limits
+
+- **Nodes:** actual portal-wall actors, mesh transforms, face directions,
+  dimensions, and serialized launch properties.
+- **Placement edges:** rays to the destination wall, front-face checks, aiming
+  incidence, angular target clearance, and camera turn from the exit face.
+- **Movement edges:** direct floor-supported corridors and sampled jump arcs.
+  Movement includes placing an entry portal at the destination before chaining.
+- **Search:** Dijkstra over each wall's face and arrival state. The search cannot
+  silently switch faces or turn a launch-portal arrival into a standing player.
+- **Costs:** fastest minimizes estimated seconds; easiest minimizes accumulated
+  effort; balanced combines both. The summary difficulty is the hardest step.
+
+Ray tests use **render triangles as a collision proxy**, not the game's exact
+trace channels or physics collision. Partial geometry errors are retained; critical
+geometry decoding failures withhold routes. Portal centers are sampled, so this
+is not an exhaustive enumeration of every placement on a large wall. Walking
+around corners, forced launch trajectories, and full momentum conservation are
+not inferred. A launch wall can be a route destination; its unmodeled outgoing
+motion cannot be chained as a stationary exit.
+
+Serialized base walking speed and navigation dimensions are recovered where
+available. Active mode modifiers, gravity/jump behavior, aiming time, and human
+difficulty remain qualified estimates. These are planning candidates and training
+references, not measured speedrun records or guaranteed executable inputs.
+
+## Verify
+
+```bash
+.venv/bin/python -m unittest discover -s tests -v
+```
+
+Tests cover geometry intersections/transforms, face continuity, launch arrival
+state, directed search, objectives/filters, API isolation, and real asset graph
+invariants when the private data is available. Browser QA is documented in
+[docs/HANDOFF.md](docs/HANDOFF.md).
+
+## Repository and data
+
+- `server/`: local HTTP API, triangle BVH, route search.
+- `web/`: browser UI and locally vendored Three.js.
+- `tools/AssetReader/`: CUE4Parse asset/mesh exporter.
+- `tools/reflection_emulator.py`, `native_metadata.py`, `build_mappings.py`:
+  isolated offline reflection-schema recovery.
+- `data/`: ignored installation, local key, recovered schemas, extracted assets,
+  movement defaults, compiled scenes, and import reports.
+- `.local/`: ignored server/import logs and verification artifacts.
+
+Game binaries, extracted proprietary assets, local keys, and account state never
+enter Git. This repository has no remote and publishes nothing. Read
+[docs/HANDOFF.md](docs/HANDOFF.md) before continuing development.

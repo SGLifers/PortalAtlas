@@ -53,7 +53,7 @@ def import_map(mid):
     def worker():
         try:
             local=ROOT/'.local';local.mkdir(exist_ok=True)
-            env=os.environ.copy();env.update(ATLAS_KEY_FILE=str(DATA/'key.txt'),ATLAS_MAPPING_FILE=str(DATA/'mappings.json'))
+            env=os.environ.copy();env.update(ATLAS_KEY_FILE=str(DATA/'key.txt'),ATLAS_MAPPING_FILE=str(DATA/'mappings.json'),OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1',DOTNET_PROCESSOR_COUNT='2')
             dotnet=ROOT/'.tools/dotnet/dotnet';reader=ROOT/'tools/AssetReader/bin/Release/net10.0/AssetReader.dll'
             with (local/(mid+'.log')).open('w') as log:
                 subprocess.run([str(dotnet),str(reader),str(DATA/'install/Paks'),'export-feature',mid,str(DATA/'extracted')],cwd=ROOT,env=env,stdout=log,stderr=log,check=True,timeout=1800)
@@ -86,7 +86,7 @@ class Handler(BaseHTTPRequestHandler):
                     'mapPackages':json.loads((DATA/'maps-index.json').read_text()).get('count',0) if (DATA/'maps-index.json').exists() else 0,
                     'schemaTypes':r.get('types',0),'mapsReady':sum(x['ready'] for x in map_list()),'jobs':JOBS})
             if path.startswith('/api/maps/'):return self.respond(scene(path.removeprefix('/api/maps/')))
-            if re.fullmatch(r'/assets/meshes/[a-f0-9]{20}\.bin',path):return self.file(DATA/'extracted/meshes'/path.rsplit('/',1)[1])
+            if re.fullmatch(r'/assets/(meshes|proxies)/[a-f0-9]{20}\.bin',path):return self.file(DATA/'extracted'/path.split('/')[2]/path.rsplit('/',1)[1])
             if path=='/':return self.file(WEB/'index.html')
             target=(WEB/path.lstrip('/')).resolve()
             if not target.is_relative_to(WEB):return self.respond({'error':'Invalid path'},400)

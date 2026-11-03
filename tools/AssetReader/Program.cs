@@ -10,7 +10,7 @@ using CUE4Parse.GameTypes.Splitgate2.Encryption.Aes;
 using System.Buffers.Binary;
 
 Log.Logger = new LoggerConfiguration().WriteTo.Console(standardErrorFromLevel:
-    Serilog.Events.LogEventLevel.Verbose).CreateLogger();
+    Serilog.Events.LogEventLevel.Verbose).WriteTo.Sink(new DiagnosticSink()).CreateLogger();
 if (args.Length < 2) {
     Console.Error.WriteLine("AssetReader <paks> <list|dump|raw|scan-keys> [path/filter] [output]");
     return 2;

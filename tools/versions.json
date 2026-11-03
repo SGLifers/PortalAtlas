@@ -4,5 +4,8 @@
   "dotnet_sdk": "10.0.403",
   "oodle_release": "2026-06-04-1357",
   "game_executable_sha256": "619e4753e2f68c721764a19afe61b01daee723beaa946ef94ec6bb4e0c7c5747",
-  "game_image": "sha256:2a8c855455249cf97a452345047e67b7f2a8c66c695784d891b6be13f8d61399"
+  "game_image": "sha256:2a8c855455249cf97a452345047e67b7f2a8c66c695784d891b6be13f8d61399",
+  "three_version": "0.170.0",
+  "oodle_linux_sha256": "f21d70299bbe873f63e8aef778b30f4dee6dec1fc09140c185caf1f8d153f771",
+  "mesh_format": "uint32 vertexCount/indexCount; float32 XYZ cm; uint32 triangle indices"
 }
