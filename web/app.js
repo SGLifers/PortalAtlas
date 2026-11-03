@@ -51,15 +51,15 @@ new ResizeObserver(resize).observe($('viewport'));
 function loading(title, subtitle) {
   $('loading').classList.remove('hidden');$('loading').querySelector('strong').textContent=title;$('loading').querySelector('span').textContent=subtitle;
 }
-async function fetchMesh(id) {
-  if(meshCache.has(id))return meshCache.get(id);
-  const viewProxy=state.scene.meshes.find(m=>m.id===id)?.viewProxy;
+async function fetchMesh(id,viewProxy,generation) {
+  const cacheKey=(viewProxy?'proxy:':'mesh:')+id;
+  if(meshCache.has(cacheKey))return meshCache.get(cacheKey);
   const response=await fetch(`/assets/${viewProxy?'proxies':'meshes'}/${id}.bin`);if(!response.ok)throw new Error('Mesh file unavailable');
   const data=await response.arrayBuffer(),header=new DataView(data),n=header.getUint32(0,true),ni=header.getUint32(4,true);
   if(data.byteLength!==8+n*12+ni*4)throw new Error('Invalid mesh buffer');
   const raw=new Float32Array(data,8,n*3),positions=new Float32Array(n*3);
   for(let i=0;i<n;i++){positions[i*3]=raw[i*3]/100;positions[i*3+1]=raw[i*3+2]/100;positions[i*3+2]=raw[i*3+1]/100;}
-  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(positions,3));g.setIndex(new THREE.BufferAttribute(new Uint32Array(data,8+n*12,ni),1));g.computeVertexNormals();g.computeBoundingSphere();meshCache.set(id,g);return g;
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(positions,3));g.setIndex(new THREE.BufferAttribute(new Uint32Array(data,8+n*12,ni),1));g.computeVertexNormals();g.computeBoundingSphere();if(generation!==state.generation){g.dispose();throw new Error('Arena changed');}meshCache.set(cacheKey,g);return g;
 }
 function makeWalls() {
   for(const n of state.scene.nodes) {
@@ -144,7 +144,8 @@ async function loadScene(mid) {
   const gen=++state.generation;state.routeGeneration++;loading('Reading arena','Loading extracted geometry and its portal graph.');$('find-route').disabled=false;$('find-route').innerHTML='Find route <span>↗</span>';
   try {
     const s=await api('/api/maps/'+mid);if(gen!==state.generation)return;
-    state.scene=s;state.start='';state.end='';state.selected=null;state.blocked.clear();state.route=null;
+    state.scene=s;state.start='';state.end='';state.selected=null;state.blocked.clear();state.route=null;$('wall-search').value='';document.querySelector('.right-panel').scrollTop=0;
+    if(new URLSearchParams(location.hash.slice(1)).get('map')!==mid)history.replaceState(null,'','#'+new URLSearchParams({map:mid}));
     for(const g of [geometryGroup,wallGroup,edgeGroup,routeGroup])disposeGroup(g);
     for(const g of meshCache.values())g.dispose();meshCache.clear();wallMeshes.clear();labelElements.clear();$('node-labels').replaceChildren();$('selection-card').classList.add('hidden');
     if(grid){world.remove(grid);grid.geometry.dispose();grid.material.dispose();}
@@ -160,10 +161,11 @@ async function loadScene(mid) {
     geometryMaterial.clippingPlanes=$('cutaway').checked ? [new THREE.Plane(new THREE.Vector3(0,-1,0),bounds.max.y+1)] : [];
     $('dataset-details').innerHTML=`<p>${s.source.coverage?.landscapeRead??0} terrain patches · ${s.instances.length.toLocaleString()} mesh instances · ${s.source.geometryTriangles.toLocaleString()} instanced proxy triangles.</p><p>Base walk ${s.model.walkSpeed} m/s${s.model.assetParameters?.walkSpeed?' from the character asset':''}. Gravity and jump behavior are estimated; active mode modifiers are not resolved.</p><p class="${s.issues.length?'issue-count':''}">${s.issues.length} extraction notes. <button class="secondary" id="show-source-notes">Inspect sources</button></p><code>${esc(s.rootPackage)}<br>Revision ${esc(s.revision)}</code>`;
     $('show-source-notes').onclick=showSources;
+    $('export-graph').href='/api/export/graph?'+new URLSearchParams({map:s.id,revision:s.revision});
     const groups=new Map();for(const instance of s.instances){if(!instance.visible)continue;if(!groups.has(instance.mesh))groups.set(instance.mesh,[]);groups.get(instance.mesh).push(instance);}
     const entries=[...groups.entries()];let complete=0,failed=0,cursor=0;
     await Promise.all(Array.from({length:Math.min(10,entries.length)},async()=>{
-      while(cursor<entries.length){const [id,instances]=entries[cursor++];try{const g=await fetchMesh(id);if(gen!==state.generation)return;const mesh=new THREE.InstancedMesh(g,geometryMaterial,instances.length);instances.forEach((v,i)=>mesh.setMatrixAt(i,matrix(v.matrix)));mesh.computeBoundingSphere();geometryGroup.add(mesh);}catch(e){failed++;}complete++;if(gen===state.generation)loading('Loading '+s.name,`${complete} / ${entries.length} mesh assets${failed?' · '+failed+' unavailable':''}`);}
+      while(cursor<entries.length){const [id,instances]=entries[cursor++];try{const g=await fetchMesh(id,s.meshes.find(m=>m.id===id)?.viewProxy,gen);if(gen!==state.generation)return;const mesh=new THREE.InstancedMesh(g,geometryMaterial,instances.length);instances.forEach((v,i)=>mesh.setMatrixAt(i,matrix(v.matrix)));mesh.computeBoundingSphere();geometryGroup.add(mesh);}catch(e){failed++;}complete++;if(gen===state.generation)loading('Loading '+s.name,`${complete} / ${entries.length} mesh assets${failed?' · '+failed+' unavailable':''}`);}
     }));
     if(gen!==state.generation)return;$('loading').classList.add('hidden');geometryGroup.visible=$('show-geometry').checked;
     if(!s.nodes.length)toast('This map has no resolved player portal walls. Check its extraction notes.');
@@ -196,14 +198,14 @@ function renderResult(){
   if(!r){$('route-result').innerHTML='<div class="empty-route"><span>⌁</span><strong>A different way across.</strong><p>Select two walls on the map or use the menus above.</p></div>';return;}
   if(!r.found){$('route-result').innerHTML=`<div class="empty-route"><span>⌁</span><strong>No matching route</strong><p>${esc(r.reason)} Try a higher difficulty limit or another wall.</p></div>`;return;}
   const nodes=new Map(state.scene.nodes.map(n=>[n.id,n]));
+  const kinds=[...document.querySelectorAll('.edge-filters input:checked')].flatMap(e=>e.value==='jump'?['jump','drop']:[e.value]);
+  $('export-route').href='/api/export/route?'+new URLSearchParams({map:state.scene.id,revision:state.scene.revision,start:state.start,end:state.end,objective:state.objective,kinds:kinds.join(','),blocked:[...state.blocked].join(','),maxDifficulty:$('max-difficulty').value});
   $('route-result').innerHTML=`<div class="route-metrics"><div><strong>${r.seconds.toFixed(1)}<span> s</span></strong><small>EST. SETUP + TRAVEL</small></div><div><strong>${r.difficulty.toFixed(0)}<span> /100</span></strong><small>PEAK DIFFICULTY</small></div><div><strong>${r.placements}</strong><small>PLACEMENTS</small></div></div><div class="route-title"><span>${r.edges.length?`${r.edges.length} steps · ${r.objective}`:'Already at destination'}</span><span>${r.distance.toFixed(0)} m linked</span></div>${r.edges.map((e,i)=>`<div class="route-step ${e.kind==='portal'?'':'movement'}" data-step="${i}"><span class="step-dot"></span><strong>${esc(nodes.get(e.source)?.label)} → ${esc(nodes.get(e.target)?.label)} <span style="color:#81929f">${e.kind==='portal'?'Place + portal':e.kind}</span></strong><small>${e.kind==='portal'?`${e.angle}° incidence · ${e.distance.toFixed(1)} m · ${e.angularSize}° target`:`${e.distance.toFixed(1)} m · direct ${e.kind}`}<br>${e.kind==='portal'?`Aim yaw ${e.yaw}° · pitch ${e.pitch}° · turn ${e.turn}°<br>`:''}${e.seconds.toFixed(2)} s estimated · difficulty ${e.difficulty.toFixed(0)}</small></div>`).join('')}<p class="route-note">Geometry checked. Timing and difficulty are estimates. Start with a portal active on ${esc(nodes.get(state.start)?.label)}.</p>`;
   $('route-result').querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>selectWall(r.edges[Number(b.dataset.step)].target));
 }
 function readSaved(){try{return JSON.parse(localStorage.getItem('portal-atlas-routes')||'[]');}catch{return [];}}
 function renderSaved(){const saved=readSaved();$('saved-count').textContent=saved.length;$('saved-list').innerHTML=saved.map((r,i)=>`<div class="saved-item"><button data-saved="${i}">${esc(r.name)}</button><button data-delete="${i}" aria-label="Delete saved route">×</button></div>`).join('')||'<p>No saved routes yet.</p>';$('saved-list').querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>{saved.splice(Number(b.dataset.delete),1);localStorage.setItem('portal-atlas-routes',JSON.stringify(saved));renderSaved();});$('saved-list').querySelectorAll('[data-saved]').forEach(b=>b.onclick=async()=>{const r=saved[Number(b.dataset.saved)];if(state.scene?.id!==r.map)await loadScene(r.map);if(state.scene?.id!==r.map)return;state.start=r.start;state.end=r.end;state.blocked=new Set(r.blocked);state.objective=r.objective;$('max-difficulty').value=r.maxDifficulty??100;$('difficulty-value').textContent=$('max-difficulty').value;document.querySelectorAll('.edge-filters input').forEach(c=>c.checked=!r.kinds||r.kinds.includes(c.value));$('start-wall').value=r.start;$('end-wall').value=r.end;document.querySelectorAll('[data-objective]').forEach(x=>x.classList.toggle('active',x.dataset.objective===r.objective));await findRoute();toast(r.revision===state.scene.revision?'Saved route loaded.':'Map data changed; the saved route was recalculated.');});}
 $('save-route').onclick=()=>{if(!state.route?.found)return;const nodes=new Map(state.scene.nodes.map(n=>[n.id,n]));const saved=readSaved();saved.unshift({name:`${state.scene.name} · ${nodes.get(state.start).label} → ${nodes.get(state.end).label}`,map:state.scene.id,revision:state.scene.revision,start:state.start,end:state.end,blocked:[...state.blocked],objective:state.objective,maxDifficulty:Number($('max-difficulty').value),kinds:[...document.querySelectorAll('.edge-filters input:checked')].map(c=>c.value)});try{localStorage.setItem('portal-atlas-routes',JSON.stringify(saved.slice(0,50)));renderSaved();toast('Route saved in this browser.');}catch{toast('Browser storage is unavailable. Use Export JSON to save the route.');}};
-$('export-route').onclick=()=>{if(!state.route?.found)return;const payload={format:'portal-atlas-route',version:1,map:state.scene.id,revision:state.scene.revision,source:state.scene.source,model:state.scene.model,start:state.start,end:state.end,blocked:[...state.blocked],filters:{objective:state.objective,maxDifficulty:Number($('max-difficulty').value),kinds:[...document.querySelectorAll('.edge-filters input:checked')].map(c=>c.value)},route:state.route,nodes:state.scene.nodes.filter(n=>state.route.walls.includes(n.id))};const url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=`${state.scene.id}-portal-route.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
-$('export-graph').onclick=()=>{if(!state.scene)return;const s=state.scene;const payload={format:'portal-atlas-graph',version:1,map:s.id,revision:s.revision,rootPackage:s.rootPackage,source:s.source,model:s.model,nodes:s.nodes,edges:s.edges,issues:s.issues};const url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=`${s.id}-wall-graph.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 function renderImports(){
   $('import-list').innerHTML=state.maps.map(m=>`<div class="import-row"><span>${esc(m.name)}<small>${m.ready?`${m.nodes} walls · ${m.edges} edges`:m.job?.status==='running'?esc(m.job.phase):m.job?.status==='failed'?'Import failed · see local log':'Available in installed archives'}</small></span><button class="secondary" data-import="${m.id}" ${!m.ready&&m.job?.status==='running'?'disabled':''}>${m.ready?'Open':m.job?.status==='running'?'Reading…':'Import'}</button></div>`).join('');
   $('import-list').querySelectorAll('[data-import]').forEach(b=>b.onclick=async()=>{const m=state.maps.find(m=>m.id===b.dataset.import);if(m.ready){$('import-dialog').close();loadScene(m.id);return;}try{await api('/api/import',{map:m.id});toast('Reading '+m.name+' from installed assets.');await refreshMaps();}catch(e){toast(e.message);}});
@@ -215,13 +217,29 @@ $('swap-walls').onclick=()=>{const a=$('start-wall').value;$('start-wall').value
 $('show-geometry').onchange=()=>geometryGroup.visible=$('show-geometry').checked;$('cutaway').onchange=()=>{geometryMaterial.clippingPlanes=$('cutaway').checked && bounds ? [new THREE.Plane(new THREE.Vector3(0,-1,0),bounds.max.y+1)] : [];};$('show-edges').onchange=drawEdges;
 $('show-labels').onchange=()=>$('node-labels').classList.toggle('hidden',!$('show-labels').checked);
 $('reset-view').onclick=()=>fitView();$('view-top').onclick=()=>fitView('top');$('view-orbit').onclick=()=>fitView();
-$('map-title').style.cursor='pointer';$('import-button').onclick=()=>$('import-dialog').showModal();$('help-button').onclick=()=>$('help-dialog').showModal();
+$('choose-arena').onclick=()=>$('import-dialog').showModal();$('map-title').style.cursor='pointer';$('import-button').onclick=()=>$('import-dialog').showModal();$('help-button').onclick=()=>$('help-dialog').showModal();
 for(const b of document.querySelectorAll('[data-close]'))b.onclick=()=>$(b.dataset.close).close();
 for(const b of document.querySelectorAll('[data-objective]'))b.onclick=()=>{state.objective=b.dataset.objective;document.querySelectorAll('[data-objective]').forEach(x=>x.classList.toggle('active',x===b));findRoute();};
 for(const c of document.querySelectorAll('.edge-filters input'))c.onchange=findRoute;
 $('max-difficulty').oninput=()=>$('difficulty-value').textContent=$('max-difficulty').value;$('max-difficulty').onchange=findRoute;
 window.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName))return;if(e.key.toLowerCase()==='r')fitView();if(e.key==='Escape'){$('selection-card').classList.add('hidden');state.selected=null;drawEdges();updateWallStyles();}});
-function animate(){requestAnimationFrame(animate);controls.update();renderer.render(world,camera);const width=renderer.domElement.clientWidth,height=renderer.domElement.clientHeight;for(const n of state.scene?.nodes||[]){const el=labelElements.get(n.id);if(!el)continue;const v=vec(n.position).add(vec(n.up).multiplyScalar(n.height/2+.3)).project(camera);el.style.display=(v.z>1||v.z< -1||Math.abs(v.x)>1.1||Math.abs(v.y)>1.1)?'none':'';el.style.left=((v.x+1)/2*width)+'px';el.style.top=((1-v.y)/2*height)+'px';}}
+function animate(){
+  requestAnimationFrame(animate);controls.update();renderer.render(world,camera);
+  const width=renderer.domElement.clientWidth,height=renderer.domElement.clientHeight;
+  const priority=new Set([state.selected,state.start,state.end,...(state.route?.walls||[])]),cells=new Map();
+  const labels=(state.scene?.nodes||[]).map(n=>({n,v:vec(n.position).add(vec(n.up).multiplyScalar(n.height/2+.3)).project(camera)}));
+  labels.sort((a,b)=>Number(priority.has(b.n.id))-Number(priority.has(a.n.id))||a.v.z-b.v.z);
+  for(const {n,v} of labels){
+    const el=labelElements.get(n.id);if(!el)continue;
+    const x=(v.x+1)/2*width,y=(1-v.y)/2*height,cx=Math.floor(x/40),cy=Math.floor(y/20);
+    let hidden=v.z>1||v.z< -1||Math.abs(v.x)>1||Math.abs(v.y)>1;
+    if(!hidden&&!priority.has(n.id))for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
+      if((cells.get(`${cx+dx},${cy+dy}`)||[]).some(p=>Math.abs(p[0]-x)<37&&Math.abs(p[1]-y)<19))hidden=true;
+    }
+    el.style.display=hidden?'none':'';el.style.left=x+'px';el.style.top=y+'px';
+    if(!hidden){const key=`${cx},${cy}`;if(!cells.has(key))cells.set(key,[]);cells.get(key).push([x,y]);}
+  }
+}
 resize();animate();renderSaved();
 try{
   await refreshMaps();const status=await api('/api/status');$('source-status').textContent=`${status.mapPackages.toLocaleString()} map packages indexed`;

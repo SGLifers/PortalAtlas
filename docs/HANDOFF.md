@@ -131,3 +131,32 @@ restore still warns about its own9.0.0 reference, while our reader's deps resolv
 9.0.14. Final setup/build, UI export/filter/import/responsive QA, data coverage
 report, documentation and commits remain. Source/graph exports and aim yaw/pitch
 were added to UI and need a reload for QA.
+
+## Milestone 6 — browser exports and QA
+
+- ./setup.sh completed end-to-end against the prepared installation, including
+  checksum validation, reader build, 1,794-package index and movement defaults.
+- 35 tests pass; JS syntax check passes. Added attachment export/revision/Host
+  checks and zero-scale plane test. Added tools/audit_maps.py to audit all27
+  expected scenes, variant isolation, coverage, graph costs and buffer lengths.
+- Browser tab3/atlasTab: real Academy route, easiest vs fastest, walk/portal
+  filters, blocked-wall rerouting, max difficulty, saved-route cross-map restore,
+  source dialog, route and full graph JSON downloads passed. Downloaded files:
+  ~/Downloads/MAP_Academy-portal-route (1).json and MAP_Academy-wall-graph.json.
+  Native attachment downloads replace client Blob exports for reliable browser
+  download events. JSON was parsed and source/revision/edge counts verified.
+- Fracture1327 shared buffers render without console errors. Labels now avoid
+  overlap at distant zoom. Tested390x844 viewport: no horizontal overflow;
+  planner stacks below canvas. Added accessible Arenas chooser for narrow screens.
+  Temporary viewport override reset. Map selection now updates URL hash; stale
+  mesh fetches cannot pollute a newly selected map's cache.
+- Backend currently PID1033774, but restart once more to activate latest Host
+  header guard. Own PID/cwd must be checked; wait for socket release before start.
+- Batch PID1030707 currently compiles selected Inferno_V2,417walls, no mixed old
+  variant. Glacier finished489walls/2209edges. Erosion retry finished447/1808,
+ 132terrainpatches, geometryUsable=true. Batch report still has original Erosion
+  failure; reconcile after all imports by rerunning --all-arenas --refresh.
+- Remaining: finish remaining imports, resolve any decoder coverage failures,
+  test browser background import (creative empty map is a bounded useful test),
+  restart final server, final audit/tests, save proof screenshot under .local/,
+  write final validation report/docs, commit and remove owned stopped snapshot.

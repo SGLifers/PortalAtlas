@@ -9,7 +9,7 @@ import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, unquote
+from urllib.parse import urlparse, unquote, parse_qs
 
 from .routing import route
 
@@ -74,9 +74,12 @@ def import_map(mid):
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self,*args):pass
-    def respond(self,body,status=200,kind='application/json'):
+    def local_host(self):
+        return self.headers.get('Host','') in (f'127.0.0.1:{self.server.server_port}',f'localhost:{self.server.server_port}')
+    def respond(self,body,status=200,kind='application/json',filename=None):
         data=json.dumps(body,allow_nan=False).encode() if kind=='application/json' else body
         self.send_response(status);self.send_header('Content-Type',kind);self.send_header('Content-Length',str(len(data)))
+        if filename:self.send_header('Content-Disposition',f'attachment; filename="{filename}"')
         self.send_header('X-Content-Type-Options','nosniff');self.send_header('Cache-Control','no-cache');self.end_headers();self.wfile.write(data)
     def file(self,path):
         if not path.is_file():return self.respond({'error':'File not found'},404)
@@ -84,8 +87,26 @@ class Handler(BaseHTTPRequestHandler):
         if path.suffix=='.js':kind='application/javascript'
         return self.respond(path.read_bytes(),kind=kind)
     def do_GET(self):
+        if not self.local_host():return self.respond({'error':'Local host required'},403)
         path=unquote(urlparse(self.path).path)
         try:
+            if path in ('/api/export/graph','/api/export/route'):
+                query=parse_qs(urlparse(self.path).query,keep_blank_values=True)
+                def value(key,default=''):return query.get(key,[default])[0]
+                current=scene(value('map'))
+                if value('revision') and value('revision')!=current['revision']:raise ValueError('Map changed; reopen the arena before exporting')
+                output={'format':'portal-atlas-graph','version':1,'map':current['id'],'revision':current['revision'],'rootPackage':current['rootPackage'],'source':current['source'],'model':current['model'],'nodes':current['nodes'],'edges':current['edges'],'issues':current['issues']}
+                suffix='wall-graph'
+                if path.endswith('/route'):
+                    kinds=value('kinds','portal,walk,jump,drop').split(',') if value('kinds','portal,walk,jump,drop') else []
+                    blocked=value('blocked').split(',') if value('blocked') else []
+                    difficulty=float(value('maxDifficulty','100'));objective=value('objective','fastest')
+                    result=route(current,value('start'),value('end'),objective,kinds,blocked,difficulty)
+                    output.update(format='portal-atlas-route',start=value('start'),end=value('end'),blocked=blocked,
+                        filters={'objective':objective,'kinds':kinds,'maxDifficulty':difficulty},route=result,
+                        nodes=[n for n in current['nodes'] if n['id'] in result.get('walls',[])])
+                    output.pop('edges');suffix='portal-route'
+                return self.respond(output,filename=current['id']+'-'+suffix+'.json')
             if path=='/api/maps':return self.respond({'maps':map_list()})
             if path=='/api/status':
                 report=DATA/'mappings-report.json';r=json.loads(report.read_text()) if report.exists() else {}
@@ -98,9 +119,11 @@ class Handler(BaseHTTPRequestHandler):
             target=(WEB/path.lstrip('/')).resolve()
             if not target.is_relative_to(WEB):return self.respond({'error':'Invalid path'},400)
             return self.file(target)
+        except (BrokenPipeError,ConnectionResetError):return
         except (ValueError,KeyError) as exc:return self.respond({'error':str(exc)},400)
         except Exception as exc:return self.respond({'error':type(exc).__name__},500)
     def do_POST(self):
+        if not self.local_host():return self.respond({'error':'Local host required'},403)
         origin=self.headers.get('Origin')
         if origin and origin!=f'http://{self.headers.get("Host")}':return self.respond({'error':'Local origin required'},403)
         try:
