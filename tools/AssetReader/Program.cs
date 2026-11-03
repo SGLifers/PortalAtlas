@@ -25,7 +25,7 @@ provider.Initialize();
 var keyFile = Environment.GetEnvironmentVariable("ATLAS_KEY_FILE");
 var mappingFile = Environment.GetEnvironmentVariable("ATLAS_MAPPING_FILE");
 if (!string.IsNullOrEmpty(mappingFile))
-    provider.MappingsContainer = new FileUsmapTypeMappingsProvider(mappingFile);
+    provider.MappingsContainer = mappingFile.EndsWith(".json") ? new LocalMappings(mappingFile) : new FileUsmapTypeMappingsProvider(mappingFile);
 if (!string.IsNullOrEmpty(keyFile))
     provider.SubmitKey(new FGuid(), new FAesKey(File.ReadAllText(keyFile).Trim()));
 provider.Mount();
@@ -110,6 +110,10 @@ if (command == "list") {
     return 0;
 }
 OodleHelper.Initialize(Path.GetFullPath(".tools/liboodle-data-shared.so"));
+if (command == "export-feature") {
+    FeatureExporter.Run(provider, filter, args[3]);
+    return 0;
+}
 if (command == "raw") {
     File.WriteAllBytes(args[3], provider.SaveAsset(filter));
     return 0;

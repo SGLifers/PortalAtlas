@@ -1,0 +1,1 @@
+"""Portal Atlas local application."""

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portal Atlas · Arena Reloaded</title>
+<link rel="stylesheet" href="/style.css">
+<script type="importmap">{"imports":{"three":"/vendor/three.module.js","three/addons/":"/vendor/"}}</script>
+</head>
+<body>
+<header>
+  <a class="brand" href="/" aria-label="Portal Atlas home"><span class="brand-mark">◈</span><span>PORTAL<span class="light">ATLAS</span><small>ARENA RELOADED</small></span></a>
+  <div class="header-middle"><span class="live-dot"></span> LOCAL ASSET EXPLORER <span class="divider">/</span><span id="source-status">Connecting to installation</span></div>
+  <button id="help-button" class="icon-button" title="Controls and model details" aria-label="Controls and model details">?</button>
+</header>
+<main>
+  <aside class="left-panel">
+    <div class="panel-heading"><span>YOUR ARENAS</span><span id="map-count" class="count">0</span></div>
+    <label class="search-wrap"><span>⌕</span><input id="map-search" type="search" placeholder="Find an arena…" aria-label="Find an arena"></label>
+    <div id="map-list" class="map-list"></div>
+    <button id="import-button" class="secondary full">＋ Import installed map</button>
+    <div class="panel-rule"></div>
+    <div class="panel-heading"><span>PORTAL WALLS</span><span id="wall-count" class="count">—</span></div>
+    <label class="search-wrap"><span>⌕</span><input id="wall-search" type="search" placeholder="Find a wall…" aria-label="Find a portal wall"></label>
+    <div id="wall-list" class="wall-list"></div>
+    <div class="source-note"><span class="live-dot"></span><div>Read directly from game assets<small id="build-note">Local files · read only</small></div></div>
+  </aside>
+  <section class="viewport-section" aria-label="Interactive map viewer">
+    <div class="map-topbar"><div><span class="eyebrow">MAP EXPLORER</span><h1 id="map-title">Your portal network</h1><p id="map-subtitle">Choose an extracted arena to explore its routes.</p></div><div class="map-badge" id="map-badge">ASSET DATA</div></div>
+    <div id="viewport"><canvas id="canvas" aria-label="3D arena with selectable portal walls"></canvas><div id="node-labels"></div></div>
+    <div id="loading" class="loading"><div class="loading-symbol">◈</div><strong>Reading your arenas</strong><span>Geometry comes from the installed game files.</span></div>
+    <div class="view-tools"><button id="view-orbit" class="seg-button active">3D</button><button id="view-top" class="seg-button">Top</button><span></span><button id="reset-view" class="icon-button" title="Reset view (R)">⤢</button></div>
+    <div class="layer-tools"><label><input type="checkbox" id="show-geometry" checked> Geometry</label><label><input type="checkbox" id="show-labels" checked> Labels</label><label><input type="checkbox" id="show-edges"> All angles</label><label><input type="checkbox" id="cutaway" checked> Cutaway</label></div>
+    <div class="viewport-bottom"><div class="legend"><span><i class="cyan"></i> Portal wall</span><span><i class="purple"></i> Placement angle</span><span><i class="amber"></i> Movement</span></div><div class="mouse-hint">Drag to orbit <span>·</span> Scroll to zoom <span>·</span> Shift-click to set start</div></div>
+    <div id="selection-card" class="selection-card hidden"></div>
+  </section>
+  <aside class="right-panel">
+    <div class="panel-heading"><span>ROUTE PLANNER</span><span class="small-tag">DIRECTED GRAPH</span></div>
+    <h2>Find your next angle.</h2><p class="intro">Connect portal walls. Compare the setup, movement, and execution.</p>
+    <div class="route-endpoints"><span class="endpoint-line"></span><label><span class="endpoint-dot start"></span><span class="eyebrow">START WALL</span><select id="start-wall" aria-label="Start portal wall"><option value="">Select a wall…</option></select></label><button class="swap" id="swap-walls" title="Swap start and destination" aria-label="Swap walls">⇅</button><label><span class="endpoint-dot end"></span><span class="eyebrow">DESTINATION</span><select id="end-wall" aria-label="Destination portal wall"><option value="">Select a wall…</option></select></label></div>
+    <div class="objective" role="group" aria-label="Route objective"><button data-objective="fastest" class="active">Fastest</button><button data-objective="balanced">Balanced</button><button data-objective="easiest">Easiest</button></div>
+    <div class="edge-filters"><label><input type="checkbox" value="portal" checked> Portals</label><label><input type="checkbox" value="walk" checked> Walk</label><label><input type="checkbox" value="jump" checked> Jump / drop</label></div>
+    <label class="difficulty-filter">Maximum difficulty <span id="difficulty-value">100</span><input id="max-difficulty" type="range" min="10" max="100" step="5" value="100"></label>
+    <button id="find-route" class="primary full">Find route <span>↗</span></button>
+    <div id="route-result" class="route-result"><div class="empty-route"><span>⌁</span><strong>A different way across.</strong><p>Select two walls on the map or use the menus above.</p></div></div>
+    <div id="route-actions" class="route-actions hidden"><button id="save-route" class="secondary">Save route</button><button id="export-route" class="secondary">Export JSON ↗</button></div>
+    <details class="saved-routes"><summary>Saved routes <span id="saved-count">0</span></summary><div id="saved-list"></div></details>
+    <details class="model-details"><summary>How these routes are calculated</summary><p>Walls are nodes. Placement angles and direct movement are directed edges. Ray tests use extracted render geometry as a proxy for collision.</p><p>Times and difficulty are estimates. Portal chains assume an active portal at the start wall and replace the opposite portal at each step. Launch momentum and routes around corners are not inferred.</p><div id="dataset-details"></div></details>
+  </aside>
+</main>
+<div id="toast" class="toast hidden" role="status"></div>
+<dialog id="import-dialog"><div class="dialog-heading"><div><span class="eyebrow">YOUR INSTALLATION</span><h2>Import an arena</h2></div><button class="icon-button" data-close="import-dialog" aria-label="Close">×</button></div><p>Read a map's packages, resolve portal walls, and check its angle and movement graph.</p><div id="import-list"></div></dialog>
+<dialog id="help-dialog"><div class="dialog-heading"><h2>Explore the portal network</h2><button class="icon-button" data-close="help-dialog" aria-label="Close">×</button></div><p>Drag to orbit, right-drag to pan, and scroll to zoom. Click a portal wall to select a destination. Shift-click sets the start. Press R to reset the view.</p><p>Purple edges are direct placement opportunities. Amber edges are direct movement paths. A wall's front and back faces remain separate states during routing.</p><p>The graph describes routes supported by the extracted data and this model. Geometry checks do not establish exact in-game collision, and time, aim difficulty, and jump physics need in-game measurement.</p></dialog>
+<script type="module" src="/app.js"></script>
+</body></html>
