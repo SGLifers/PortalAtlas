@@ -315,3 +315,43 @@ still owned PID1290306 on8741; files are served directly, no restart needed.
 Next: reload responsive tab after the layer-panel selection polish, verify tap,
 group actions and no overflow; verify PNG capture while editing; restore useful
 desktop state and save proof screenshot; append final results and commit.
+
+Final QA completed: at390×844, live map label taps selected P09/P46. Only these
+gave2/69, Hide0/69, Show2/69; no horizontal overflow. Layer tools disappeared
+while selecting and returned on Done. Adaptive label decluttering can hide a
+nearby unselected label when another wall gains priority; use the wall face or
+box selection in that case. Temporary tab8 closed and viewport override reset.
+
+PNG captures while editing and after Done (labels off, identical camera) were
+1725×2499. Compared all4,310,775pixels:191 differed by at most1 RGB level, with
+zero pixels differing by more than1. This confirms editing gold was removed from
+the exported frame. Copies: .local/group-editing-capture.png and comparison
+.local/group-capture-diff.png. Python3's Pillow is available system-wide; it is
+not installed in the Atlas venv. No dependency was added.
+
+Desktop Academy restored to69/69 portals, Labels/Lines on, 3D/color mode, cutoff
+25.4m. P01→P06 remains4steps/4.5s/peak78/142m. Example saved group Clue 1 example
+has10walls, available for demonstration; current selection holds those members.
+Selection mode finished; group panel open. Browser tab3 marked deliverable.
+Screenshot .local/wall-groups-preview.png shows the group with gold live-selection
+highlights before Done. The in-app screenshot surface sometimes lags one UI frame;
+DOM inspection confirmed the final non-editing state. No app console warnings or
+errors. Fixed left-list gold styles to clear immediately when selection ends.
+
+Box selection operates on projected centers of enabled portal overlays within the
+camera frustum, including walls occluded by geometry. It is a selection-through
+tool; rendering/geometry occlusion does not filter the box. Hidden portal IDs and
+master Portals off are excluded. Primary clicks target the nearest portal mesh,
+as the existing viewer did. README documents the selection-through behavior.
+
+Commands: Node --check web/app.js passed; node --test tests/*.test.mjs passed8.
+Frontend-only changes; Python routing/asset code and datasets are untouched, so
+their previously passing48 tests were not repeated. No outstanding work for this
+request. No server restart or game-host operations; Atlas PID1290306 on8741 stays
+running. Portle remains independent on8742 with its empty manual clue library.
+
+Final reload/selection cleanup check: selected10, Done left editing=false and
+left-list group highlights=0, while retaining10 selected members and69/69 shown.
+git diff --check passed. Browser automation had transient frame/evaluation delays
+during reload; a fresh read confirmed Loading hidden and normal app state before
+continuing. These were automation delays, not app console errors.

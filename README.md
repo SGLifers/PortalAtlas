@@ -45,6 +45,7 @@ lines, while retaining the portal overlays you selected.
 To work with several walls, open **Wall groups → Select walls on map**. Click
 portal faces or their labels to toggle selection, or drag a rectangle around
 wall centers to add several at once. Shift-drag removes walls from the selection.
+Box selection includes enabled portal overlays behind map geometry.
 Selected walls turn gold. Camera navigation pauses while selecting; **Done** or
 Escape resumes navigation and opens the group panel. The layer controls are
 temporarily tucked away to leave room for selecting on smaller screens.

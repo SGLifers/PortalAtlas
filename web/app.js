@@ -120,7 +120,7 @@ function setGroupMode(active,{openPanel=false}={}){
   for(const label of labelElements.values())label.tabIndex=active?0:-1;
   if(active){$('selection-card').classList.add('hidden');openGroups(false);}
   else if(openPanel)openGroups();
-  updateWallStyles();
+  updateWallStyles();renderWallList();
 }
 
 function readCutoffHeights(){
