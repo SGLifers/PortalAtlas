@@ -22,6 +22,17 @@ public static class ColorExporter
     static string Normalize(string value)=>new(value.ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
     static readonly string[] ColorNames=["basecolor","basecolour","albedo","diffusecolor","diffusecolour","color","colour","color1","colour1","basecolortint","basecolourtint","colortint","tintcolor","tint"];
 
+    static JObject PropertiesOnly(UObject asset)
+    {
+        var properties=new JObject();
+        foreach(var property in asset.Properties)
+        {
+            var name=property.ArrayIndex>0 ? $"{property.Name.Text}[{property.ArrayIndex}]" : property.Name.Text;
+            properties[name]=property.Tag is null ? JValue.CreateNull() : JToken.FromObject(property.Tag);
+        }
+        return new JObject{["Properties"]=properties};
+    }
+
     public static void Run(DefaultFileProvider provider,string map,string output)
     {
         if(!System.Text.RegularExpressions.Regex.IsMatch(map,@"^MAP_[A-Za-z0-9_]+$"))throw new InvalidDataException("Invalid map ID");
@@ -46,7 +57,7 @@ public static class ColorExporter
             var split=reference.IndexOf('.');var path=split<0?reference:reference[..split];var name=split<0?null:reference[(reference.LastIndexOf('.')+1)..];
             var exports=Package(path).GetExports().ToArray();
             var asset=exports.FirstOrDefault(o=>o.GetPathName()==reference) ?? exports.FirstOrDefault(o=>o.Name==name) ?? (name is null ? exports.First() : throw new InvalidDataException("Referenced export missing"));
-            var json=JObject.FromObject(asset);assets[reference]=json;return json;
+            var json=PropertiesOnly(asset);assets[reference]=json;return json;
         }
         JObject? Color(string reference,HashSet<string> visited,int depth=0)
         {
@@ -142,7 +153,9 @@ public static class ColorExporter
                 {
                     if(obj is UStaticMeshComponent)
                     {
-                        var json=JObject.FromObject(obj);
+                        // Native instance-transform arrays can be enormous and
+                        // are unrelated to a component's material overrides.
+                        var json=PropertiesOnly(obj);
                         var refs=Property(json["Properties"],"OverrideMaterials") as JArray;
                         if(refs is not null)components[obj.GetPathName()]=refs.Select(r=>Material(Reference(r))).ToArray();
                     }

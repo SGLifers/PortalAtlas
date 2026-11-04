@@ -414,3 +414,26 @@ Atlas localhost8741 was stopped on this resumed host (old PID1290306 is stale).
 Start this repo's local server for UI verification and record its new owned PID.
 Do not signal the old PID. Portle is user-managed and must not be restarted or
 modified. No subagents were spawned.
+
+Reader scaling follow-up: after native mesh slots were optimized, the Erosion
+pilot still expanded native component instance arrays while obtaining overrides.
+Verified/stopped owned pilot wrapper30950 (session75974) before rebuilding.
+Added PropertiesOnly(UObject), which serializes property tags with the same JSON
+converters but omits unrelated native render/instance data. Academy's complete
+materials, meshes and components tables still match the original pilot exactly.
+Final full refresh is now running in exec session38500:
+`.venv/bin/python tools/import_colors.py --all-arenas --refresh > .local/colors-rollout-final.log 2>&1`
+Completed Abyss, Academy, Bypass, Containment, Core and Eden without validation
+errors; Erosion was processing when last checked. No reader rebuild until done.
+
+Atlas restarted in foreground exec session10355, PID32297, onlocalhost8741;
+.local/server.pid updated. Initial shell-background nohup launch did not survive
+the command; this server is the one confirmed HTTP200. Keep it running at handoff.
+Current browser inventory changed after app/host restart: browser2 tabs1/2 are
+Atlas, tab3 Portle/manage, tab4 Discord docs. Old bindings/tab numbers are stale.
+Selecting Atlas tab2 was rejected by browser security because its failed-load
+internal error page has a disallowed protocol. Do not work around this with other
+browser surfaces. An async user question requests refreshing the existing Atlas
+tab and replying ready; continue import/audit work while awaiting that action.
+Browser QA is pending a genuine refreshed http document, not permission to bypass
+the browser restriction.
