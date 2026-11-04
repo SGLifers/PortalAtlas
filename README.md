@@ -42,6 +42,22 @@ route planning. The map's underlying wall geometry remains intact.
 Uncheck **Labels** and **Lines** for clean clues without wall IDs or route/angle
 lines, while retaining the portal overlays you selected.
 
+To work with several walls, open **Wall groups → Select walls on map**. Click
+portal faces or their labels to toggle selection, or drag a rectangle around
+wall centers to add several at once. Shift-drag removes walls from the selection.
+Selected walls turn gold. Camera navigation pauses while selecting; **Done** or
+Escape resumes navigation and opens the group panel. The layer controls are
+temporarily tucked away to leave room for selecting on smaller screens.
+
+Use **Show / Hide / Only these** immediately on a selection, or enter a name and
+**Save group**. Each saved group has the same visibility actions. Click its name
+to load its members, change the selection or name, then **Update group**. **Save
+as new…** keeps the selection and starts another group, useful for successive
+Portle clues. Groups may overlap; a visibility action applies to the actual walls
+in that group. Hidden walls remain members: show them before picking them again.
+Groups persist separately for each map in this browser. Gold editing highlights
+and selection controls are excluded from screenshot downloads.
+
 ## First setup
 
 Requirements: Linux x64, Python 3.12+, Bash, Git, and either the local Docker game

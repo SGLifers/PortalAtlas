@@ -277,3 +277,41 @@ Portal visibility milestone e642790; use git log for the final capture refinemen
 Portle manual editor is now complete at localhost8742/manage, with an empty real
 library ready for the user's first six-image set. No Atlas data is read by default
 Portle gameplay. Both repos retain independent commits/handoff documentation.
+
+## Follow-up — live selection and saved wall groups, 2026-11-03
+
+Latest user request: easily show/hide groups of portal walls, creating groups by
+selecting directly on the live map. Implementation is complete; final responsive
+and screenshot QA is in progress at this milestone. No Portle or game-host edits.
+
+Wall groups opens an arena-scoped panel. Select walls on map enables primary
+click/tap toggles on portal faces or labels; drag adds visible wall centers inside
+the rectangle; Shift-drag removes. Navigation pauses while selecting. Done or
+Escape resumes it and opens the group editor. Captured primary gestures prevent
+OrbitControls and ordinary route selection from acting on the same events.
+Pointer cancellation discards unfinished rectangles. Layer tools tuck away in
+selection mode; saved members may also be removed with individual chips.
+
+Selections have Show/Hide/Only these controls. Named groups support the same bulk
+actions, load/edit/rename/update, Save as new and delete. Groups may overlap;
+show/hide affects actual wall IDs, not independent group layers. Hidden members
+remain in groups but cannot be picked until shown. Route start/end/avoidance are
+separate. Storage key portal-atlas-wall-groups contains map-to-group arrays;
+normalization rejects corrupt records and filters stale/foreign wall IDs.
+Gold editing highlights are temporarily removed for synchronous PNG compositing,
+then immediately restored; group controls/rectangle are outside captured content.
+
+Validation so far: JS syntax passed; node --test tests/*.test.mjs passed8 tests
+(5 colors +3 group state/box tests). Browser: three map label clicks selected3
+walls without changing route endpoints; clicking the P01 mesh toggled it off;
+dragging (320,800)→(580,980) added9 walls for11 total. Saved Clue example, Hide
+gave58/69, Only these gave11/69. Reload retained both group and visibility.
+Edited to10 members (removed P46), renamed Clue 1 example, updated. Switching
+Academy→Abyss showed no groups/selection; switching back restored the one group.
+No console warnings/errors. Current desktop tab3 on Academy; temporary responsive
+tab8 at390×844 is still open, to be reset/closed after final QA. Main server is
+still owned PID1290306 on8741; files are served directly, no restart needed.
+
+Next: reload responsive tab after the layer-panel selection polish, verify tap,
+group actions and no overflow; verify PNG capture while editing; restore useful
+desktop state and save proof screenshot; append final results and commit.

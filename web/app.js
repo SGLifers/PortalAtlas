@@ -2,11 +2,13 @@ import * as THREE from 'three';
 import { OrbitControls } from './vendor/OrbitControls.js';
 import { linearColor,validSections,surfaceSlots } from './colors.js';
 import { captureMapView,screenshotFilename,downloadScreenshot } from './screenshot.js';
+import { normalizeGroups,groupVisibility,wallsInBox } from './portal-groups.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const state = { maps:[], scene:null, selected:null, start:'',end:'', objective:'fastest', blocked:new Set(),route:null, generation:0,routeGeneration:0 };
 state.hiddenPortals=new Set();
+state.groupSelection=new Set();state.wallGroups=[];state.editingGroup=null;state.groupMode=false;
 let toastTimer;
 function toast(text) { $('toast').textContent=text;$('toast').classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.add('hidden'),4300); }
 async function api(path, payload) {
@@ -52,12 +54,73 @@ function applyPortalVisibility(remember=false){
   for(const option of $('capture-portal-list').options)option.selected=!state.hiddenPortals.has(option.value);
   if(remember&&state.scene){try{const saved=readHiddenPortals();saved[state.scene.id]=[...state.hiddenPortals];localStorage.setItem('portal-atlas-hidden-portals',JSON.stringify(saved));}catch{}}
   drawEdges();drawRoute();
+  renderWallGroups();
 }
 function setPortalVisibility(action){
   if(!state.scene)return;
   $('show-portals').checked=true;
   state.hiddenPortals=new Set(action==='all'?[]:state.scene.nodes.filter(n=>action!=='selected'||n.id!==state.selected).map(n=>n.id));
   applyPortalVisibility(true);renderWallList();
+}
+
+function readGroupStore(){
+  try{const value=JSON.parse(localStorage.getItem('portal-atlas-wall-groups')||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch{return {};}
+}
+function saveGroups(groups){
+  const saved=readGroupStore();saved[state.scene.id]=groups;
+  try{localStorage.setItem('portal-atlas-wall-groups',JSON.stringify(saved));state.wallGroups=groups;return true;}
+  catch{toast('Browser storage is unavailable. Groups could not be saved.');return false;}
+}
+function openGroups(open=true){$('groups-panel').classList.toggle('hidden',!open);$('toggle-groups').setAttribute('aria-expanded',String(open));}
+function refreshGroupSelection(){
+  const count=state.groupSelection.size;
+  $('group-selection-count').textContent=`${count} wall${count===1?'':'s'} selected`;
+  $('map-selection-count').textContent=`${count} selected`;
+  $('group-selection-members').innerHTML=(state.scene?.nodes||[]).filter(n=>state.groupSelection.has(n.id)).map(n=>`<button type="button" class="group-member" data-unselect-wall="${n.id}" aria-label="Remove ${esc(n.label)} from selection">${esc(n.label)} ×</button>`).join('')||'No walls selected';
+  $('group-selection-members').querySelectorAll('[data-unselect-wall]').forEach(button=>button.onclick=()=>{state.groupSelection.delete(button.dataset.unselectWall);refreshGroupSelection();});
+  for(const id of ['show-group-selection','hide-group-selection','isolate-group-selection','save-wall-group'])$(id).disabled=!count;
+  $('save-wall-group').textContent=state.editingGroup?'Update group':'Save group';
+  $('new-wall-group').classList.toggle('hidden',!state.editingGroup);
+  updateWallStyles();renderWallList();renderWallGroups();
+}
+function renderWallGroups(){
+  $('group-count').textContent=state.wallGroups.length;
+  $('wall-groups-list').innerHTML=state.wallGroups.map(group=>{
+    const shown=group.walls.filter(portalVisible).length;
+    return `<div class="wall-group ${group.id===state.editingGroup?'editing':''}"><div class="wall-group-heading"><button type="button" class="group-load" data-group-load="${esc(group.id)}" aria-label="Select group ${esc(group.name)}"><strong>${esc(group.name)}</strong><small>${group.walls.length} walls · ${shown} shown</small></button><button type="button" class="group-link group-delete" data-group-delete="${esc(group.id)}" aria-label="Delete group ${esc(group.name)}">×</button></div><div class="group-actions"><button type="button" class="secondary" data-group-show="${esc(group.id)}" aria-label="Show group ${esc(group.name)}">Show</button><button type="button" class="secondary" data-group-hide="${esc(group.id)}" aria-label="Hide group ${esc(group.name)}">Hide</button><button type="button" class="secondary" data-group-only="${esc(group.id)}" aria-label="Show only group ${esc(group.name)}">Only these</button></div></div>`;
+  }).join('')||'<p class="group-empty">No saved groups yet.</p>';
+  $('wall-groups-list').querySelectorAll('[data-group-load]').forEach(button=>button.onclick=()=>{
+    const group=state.wallGroups.find(g=>g.id===button.dataset.groupLoad);
+    state.editingGroup=group.id;state.groupSelection=new Set(group.walls);$('group-name').value=group.name;refreshGroupSelection();
+  });
+  $('wall-groups-list').querySelectorAll('[data-group-delete]').forEach(button=>button.onclick=()=>{
+    if(!saveGroups(state.wallGroups.filter(g=>g.id!==button.dataset.groupDelete)))return;
+    if(state.editingGroup===button.dataset.groupDelete){state.editingGroup=null;$('group-name').value='';}
+    refreshGroupSelection();toast('Group deleted. Its walls and visibility are unchanged.');
+  });
+  for(const action of ['show','hide','only'])$('wall-groups-list').querySelectorAll(`[data-group-${action}]`).forEach(button=>button.onclick=()=>{
+    const group=state.wallGroups.find(g=>g.id===button.getAttribute(`data-group-${action}`));applyGroupVisibility(group.walls,action);
+  });
+}
+function applyGroupVisibility(members,action){
+  if(!state.scene||!members.size&&!members.length)return;
+  state.hiddenPortals=groupVisibility(state.scene.nodes.map(n=>n.id),state.hiddenPortals,members,action);
+  if(action!=='hide')$('show-portals').checked=true;
+  applyPortalVisibility(true);renderWallList();
+}
+function toggleGroupWall(id){
+  state.groupSelection.has(id)?state.groupSelection.delete(id):state.groupSelection.add(id);refreshGroupSelection();
+}
+function setGroupMode(active,{openPanel=false}={}){
+  cancelGroupDrag();state.groupMode=active;controls.enabled=!active;
+  $('viewport').classList.toggle('selecting-walls',active);
+  document.querySelector('.viewport-section').classList.toggle('selecting-walls',active);
+  $('group-selection-bar').classList.toggle('hidden',!active);
+  $('select-group-walls').textContent=active?'Continue selecting on map':'Select walls on map';
+  for(const label of labelElements.values())label.tabIndex=active?0:-1;
+  if(active){$('selection-card').classList.add('hidden');openGroups(false);}
+  else if(openPanel)openGroups();
+  updateWallStyles();
 }
 
 function readCutoffHeights(){
@@ -113,6 +176,10 @@ function fitView(mode='orbit') {
 }
 function resize(){const r=$('viewport').getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();}
 new ResizeObserver(resize).observe($('viewport'));
+new ResizeObserver(()=>{
+  const section=document.querySelector('.viewport-section'),tools=document.querySelector('.view-tools');
+  section.style.setProperty('--group-top',`${tools.getBoundingClientRect().bottom-section.getBoundingClientRect().top+10}px`);
+}).observe(document.querySelector('.view-tools'));
 
 function loading(title, subtitle) {
   $('capture-view').disabled=true;
@@ -144,7 +211,10 @@ function makeWalls() {
     const material=new THREE.MeshBasicMaterial({color:0x70e7d6,side:THREE.DoubleSide,transparent:true,opacity:.53,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3});
     const mesh=new THREE.Mesh(g,material);mesh.userData.node=n;mesh.userData.portalId=n.id;wallGroup.add(mesh);wallMeshes.set(n.id,mesh);
     const line=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(outline),new THREE.LineBasicMaterial({color:0x91ffe8,transparent:true,opacity:.65}));line.userData.portalId=n.id;wallGroup.add(line);
-    const label=document.createElement('span');label.className='node-label';label.textContent=n.label;$('node-labels').append(label);labelElements.set(n.id,label);
+    const label=document.createElement('span');label.className='node-label';label.textContent=n.label;label.tabIndex=-1;label.setAttribute('aria-label',`Select portal ${n.label}`);
+    label.onclick=()=>{if(state.groupMode)toggleGroupWall(n.id);};
+    label.onkeydown=event=>{if(state.groupMode&&['Enter',' '].includes(event.key)){event.preventDefault();event.stopPropagation();toggleGroupWall(n.id);}};
+    $('node-labels').append(label);labelElements.set(n.id,label);
   }
 }
 function drawEdges() {
@@ -172,17 +242,21 @@ function drawRoute() {
     const orb=new THREE.Mesh(new THREE.SphereGeometry(.2,12,8),new THREE.MeshBasicMaterial({color:e.kind==='portal'?0xd8caff:0xffd394,depthTest:false}));orb.position.copy(vec(e.path[e.path.length-1]));routeGroup.add(orb);
   }
 }
-function updateWallStyles() {
+function updateWallStyles(capture=false) {
   for(const [id,mesh] of wallMeshes) {
-    mesh.material.color.setHex(state.blocked.has(id)?0xb86e78:id===state.start?0xa7ffe8:id===state.end?0xffcb87:0x60cbbf);
-    mesh.material.opacity=id===state.selected || id===state.start || id===state.end ? .85 : .46;
+    const grouped=!capture&&state.groupMode&&state.groupSelection.has(id);
+    mesh.material.color.setHex(grouped?0xffdd70:state.blocked.has(id)?0xb86e78:id===state.start?0xa7ffe8:id===state.end?0xffcb87:0x60cbbf);
+    mesh.material.opacity=grouped||id===state.selected || id===state.start || id===state.end ? .85 : .46;
     const label=labelElements.get(id);label.classList.toggle('selected',id===state.selected || id===state.start || id===state.end);label.classList.toggle('blocked',state.blocked.has(id));
+    label.classList.toggle('group-selected',grouped);
+    if(state.groupMode){label.setAttribute('role','button');label.setAttribute('aria-pressed',String(state.groupSelection.has(id)));}
+    else{label.removeAttribute('role');label.removeAttribute('aria-pressed');}
   }
 }
 function renderWallList(){
   const query=$('wall-search').value.toLowerCase();
   $('wall-list').innerHTML=(state.scene?.nodes || []).filter(n=>(n.label+' '+n.name).toLowerCase().includes(query)).map(n=>`<div class="wall-item"><input type="checkbox" data-portal-visible="${n.id}" aria-label="Show portal ${esc(n.label)}" ${!state.hiddenPortals.has(n.id)?'checked':''}><button class="wall-row ${n.id===state.selected?'selected':''}" data-wall="${n.id}"><span class="wall-id">${esc(n.label)}</span><span class="wall-name">${n.launch?'Launch wall':n.type.includes('Circular')?'Circular wall':'Portal wall'}<small>${n.width.toFixed(1)} × ${n.height.toFixed(1)} m · Z ${n.position[2].toFixed(1)}</small></span><span class="wall-state ${state.blocked.has(n.id)?'blocked':''}"></span></button></div>`).join('');
-  $('wall-list').querySelectorAll('[data-wall]').forEach(b=>b.onclick=()=>selectWall(b.dataset.wall));
+  $('wall-list').querySelectorAll('[data-wall]').forEach(b=>{b.classList.toggle('group-selected',state.groupMode&&state.groupSelection.has(b.dataset.wall));b.onclick=()=>state.groupMode?toggleGroupWall(b.dataset.wall):selectWall(b.dataset.wall);});
   $('wall-list').querySelectorAll('[data-portal-visible]').forEach(input=>input.onchange=()=>{input.checked?state.hiddenPortals.delete(input.dataset.portalVisible):state.hiddenPortals.add(input.dataset.portalVisible);applyPortalVisibility(true);});
 }
 function selectWall(id,{start=false,destination=false}={}){
@@ -198,11 +272,47 @@ function selectWall(id,{start=false,destination=false}={}){
   renderWallList();updateWallStyles();drawEdges();$('only-selected-portal').disabled=false;if(start||destination)findRoute();
 }
 let down=null;
+let groupDrag=null;
+function cancelGroupDrag(){
+  if(groupDrag&&renderer.domElement.hasPointerCapture(groupDrag.id))renderer.domElement.releasePointerCapture(groupDrag.id);
+  groupDrag=null;$('wall-selection-box').classList.add('hidden');
+}
+function mapPoint(event){const rect=renderer.domElement.getBoundingClientRect();return {x:Math.max(0,Math.min(rect.width,event.clientX-rect.left)),y:Math.max(0,Math.min(rect.height,event.clientY-rect.top))};}
+function pickWall(event){
+  const r=renderer.domElement.getBoundingClientRect();pointer.set((event.clientX-r.left)/r.width*2-1,-(event.clientY-r.top)/r.height*2+1);raycaster.setFromCamera(pointer,camera);
+  return raycaster.intersectObjects([...wallMeshes.values()].filter(mesh=>portalVisible(mesh.userData.node.id)))[0]?.object.userData.node.id;
+}
+// Capture primary gestures before OrbitControls sees them. Navigation and route
+// picking resume on Done; pointer cancellation never applies an unfinished box.
+renderer.domElement.addEventListener('pointerdown',event=>{
+  if(!state.groupMode||!state.scene||event.button!==0||!event.isPrimary)return;
+  event.preventDefault();event.stopImmediatePropagation();down=null;
+  groupDrag={id:event.pointerId,start:mapPoint(event),remove:event.shiftKey};renderer.domElement.setPointerCapture(event.pointerId);
+},true);
+renderer.domElement.addEventListener('pointermove',event=>{
+  if(!groupDrag||event.pointerId!==groupDrag.id)return;
+  event.preventDefault();event.stopImmediatePropagation();const end=mapPoint(event),start=groupDrag.start;
+  const box=$('wall-selection-box');box.classList.toggle('hidden',Math.hypot(end.x-start.x,end.y-start.y)<=5);box.classList.toggle('removing',groupDrag.remove);
+  box.style.left=Math.min(start.x,end.x)+'px';box.style.top=Math.min(start.y,end.y)+'px';box.style.width=Math.abs(end.x-start.x)+'px';box.style.height=Math.abs(end.y-start.y)+'px';
+},true);
+renderer.domElement.addEventListener('pointerup',event=>{
+  if(!groupDrag||event.pointerId!==groupDrag.id)return;
+  event.preventDefault();event.stopImmediatePropagation();const end=mapPoint(event),{start,remove}=groupDrag;
+  if(Math.hypot(end.x-start.x,end.y-start.y)>5){
+    const points=state.scene.nodes.filter(n=>portalVisible(n.id)).flatMap(n=>{
+      const v=vec(n.position).project(camera);return v.z>=-1&&v.z<=1&&Math.abs(v.x)<=1&&Math.abs(v.y)<=1?[{id:n.id,x:(v.x+1)/2*renderer.domElement.clientWidth,y:(1-v.y)/2*renderer.domElement.clientHeight}]:[];
+    });
+    for(const id of wallsInBox(points,start,end))remove?state.groupSelection.delete(id):state.groupSelection.add(id);
+    refreshGroupSelection();
+  }else{const id=pickWall(event);if(id)toggleGroupWall(id);}
+  cancelGroupDrag();
+},true);
+renderer.domElement.addEventListener('pointercancel',cancelGroupDrag);
+renderer.domElement.addEventListener('lostpointercapture',()=>{groupDrag=null;$('wall-selection-box').classList.add('hidden');});
 renderer.domElement.addEventListener('pointerdown',event=>{down=[event.clientX,event.clientY];});
 renderer.domElement.addEventListener('pointerup',event=>{
-  if(!state.scene || !down || event.button!==0 || Math.hypot(event.clientX-down[0],event.clientY-down[1])>5)return;
-  const r=renderer.domElement.getBoundingClientRect();pointer.set((event.clientX-r.left)/r.width*2-1,-(event.clientY-r.top)/r.height*2+1);raycaster.setFromCamera(pointer,camera);
-  const hits=raycaster.intersectObjects([...wallMeshes.values()].filter(mesh=>portalVisible(mesh.userData.node.id)));if(hits.length)selectWall(hits[0].object.userData.node.id,{start:event.shiftKey,destination:!event.shiftKey});
+  if(state.groupMode||!state.scene || !down || event.button!==0 || Math.hypot(event.clientX-down[0],event.clientY-down[1])>5)return;
+  const id=pickWall(event);if(id)selectWall(id,{start:event.shiftKey,destination:!event.shiftKey});
 });
 function renderMaps(){
   const query=$('map-search').value.toLowerCase();const ready=state.maps.filter(m=>m.ready&&!m.library);$('map-count').textContent=ready.length;
@@ -216,6 +326,7 @@ async function loadScene(mid) {
     const s=await api('/api/maps/'+mid);if(gen!==state.generation)return;
     state.scene=s;state.start='';state.end='';state.selected=null;state.blocked.clear();state.route=null;$('wall-search').value='';document.querySelector('.right-panel').scrollTop=0;
     const hidden=readHiddenPortals()[mid];state.hiddenPortals=new Set(Array.isArray(hidden)?hidden.filter(id=>s.nodes.some(n=>n.id===id)):[]);
+    setGroupMode(false);state.groupSelection.clear();state.editingGroup=null;state.wallGroups=normalizeGroups(readGroupStore()[mid],s.nodes.map(n=>n.id));$('group-name').value='';refreshGroupSelection();
     if(new URLSearchParams(location.hash.slice(1)).get('map')!==mid)history.replaceState(null,'','#'+new URLSearchParams({map:mid}));
     for(const g of [geometryGroup,wallGroup,edgeGroup,routeGroup])disposeGroup(g);
     for(const material of surfaceMaterials.values())material.dispose();surfaceMaterials.clear();appearance=null;
@@ -300,6 +411,24 @@ $('show-lines').onchange=()=>applyPortalVisibility();
 $('show-all-portals').onclick=()=>setPortalVisibility('all');$('hide-all-portals').onclick=()=>setPortalVisibility('none');$('only-selected-portal').onclick=()=>setPortalVisibility('selected');
 $('capture-show-all').onclick=()=>setPortalVisibility('all');$('capture-hide-all').onclick=()=>setPortalVisibility('none');
 $('capture-portal-list').onchange=()=>{const shown=new Set([...$('capture-portal-list').selectedOptions].map(option=>option.value));state.hiddenPortals=new Set(state.scene.nodes.filter(n=>!shown.has(n.id)).map(n=>n.id));$('show-portals').checked=true;applyPortalVisibility(true);renderWallList();};
+$('toggle-groups').onclick=()=>openGroups($('groups-panel').classList.contains('hidden'));
+$('close-groups').onclick=()=>openGroups(false);
+$('select-group-walls').onclick=()=>{if(state.scene){setGroupMode(true);refreshGroupSelection();}};
+$('selection-open-groups').onclick=()=>openGroups();
+$('finish-group-selection').onclick=()=>setGroupMode(false,{openPanel:true});
+$('clear-group-selection').onclick=()=>{state.groupSelection.clear();refreshGroupSelection();};
+for(const [id,action] of [['show-group-selection','show'],['hide-group-selection','hide'],['isolate-group-selection','only']])$(id).onclick=()=>applyGroupVisibility(state.groupSelection,action);
+$('new-wall-group').onclick=()=>{state.editingGroup=null;$('group-name').value='';refreshGroupSelection();$('group-name').focus();};
+$('group-name').oninput=()=>$('group-name').setCustomValidity('');
+$('group-form').onsubmit=event=>{
+  event.preventDefault();if(!state.scene||!state.groupSelection.size)return;
+  const name=$('group-name').value.trim();
+  if(!name){$('group-name').setCustomValidity('Enter a group name.');$('group-name').reportValidity();return;}
+  const group={id:state.editingGroup||crypto.randomUUID(),name,walls:[...state.groupSelection]};
+  const groups=state.editingGroup?state.wallGroups.map(g=>g.id===group.id?group:g):[...state.wallGroups,group];
+  if(!saveGroups(groups))return;
+  state.editingGroup=group.id;refreshGroupSelection();toast(`Group “${name}” saved in this browser.`);
+};
 $('cutoff-slider').oninput=()=>setCutoffHeight($('cutoff-slider').valueAsNumber,{remember:true});
 $('surface-mode').onchange=()=>{preferredSurfaceMode=$('surface-mode').value;try{localStorage.setItem('portal-atlas-surface-mode',preferredSurfaceMode);}catch{}applySurfaceMode();};
 $('cutoff-height').oninput=()=>setCutoffHeight($('cutoff-height').valueAsNumber,{remember:true,updateNumber:false});
@@ -316,7 +445,10 @@ $('capture-view').onclick=async()=>{
   const button=$('capture-view');button.disabled=true;button.setAttribute('aria-busy','true');
   const filename=screenshotFilename(state.scene.id,$('view-top').classList.contains('active')?'top':'3d');
   try{
-    const image=await captureMapView({renderer,world,camera,labels:$('node-labels')});
+    let capture;
+    try{updateWallStyles(true);capture=captureMapView({renderer,world,camera,labels:$('node-labels')});}
+    finally{updateWallStyles();}
+    const image=await capture;
     downloadScreenshot(image,filename);toast('Map screenshot downloaded as PNG.');
   }catch(error){toast('Screenshot failed: '+error.message);}
   finally{button.disabled=!state.scene||!$('loading').classList.contains('hidden');button.removeAttribute('aria-busy');}
@@ -326,11 +458,11 @@ for(const b of document.querySelectorAll('[data-close]'))b.onclick=()=>$(b.datas
 for(const b of document.querySelectorAll('[data-objective]'))b.onclick=()=>{state.objective=b.dataset.objective;document.querySelectorAll('[data-objective]').forEach(x=>x.classList.toggle('active',x===b));findRoute();};
 for(const c of document.querySelectorAll('.edge-filters input'))c.onchange=findRoute;
 $('max-difficulty').oninput=()=>$('difficulty-value').textContent=$('max-difficulty').value;$('max-difficulty').onchange=findRoute;
-window.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName))return;if(e.key.toLowerCase()==='r')fitView();if(e.key==='Escape'){$('selection-card').classList.add('hidden');state.selected=null;drawEdges();updateWallStyles();}});
+window.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName))return;if(e.key.toLowerCase()==='r')fitView();if(e.key==='Escape'){if(state.groupMode){setGroupMode(false,{openPanel:true});return;}if(!$('groups-panel').classList.contains('hidden')){openGroups(false);return;}$('selection-card').classList.add('hidden');state.selected=null;drawEdges();updateWallStyles();}});
 function animate(){
   requestAnimationFrame(animate);controls.update();renderer.render(world,camera);
   const width=renderer.domElement.clientWidth,height=renderer.domElement.clientHeight;
-  const priority=new Set([state.selected,state.start,state.end,...(state.route?.walls||[])]),cells=new Map();
+  const priority=new Set([state.selected,state.start,state.end,...(state.route?.walls||[]),...(state.groupMode?state.groupSelection:[])]),cells=new Map();
   const labels=(state.scene?.nodes||[]).map(n=>({n,v:vec(n.position).add(vec(n.up).multiplyScalar(n.height/2+.3)).project(camera)}));
   labels.sort((a,b)=>Number(priority.has(b.n.id))-Number(priority.has(a.n.id))||a.v.z-b.v.z);
   for(const {n,v} of labels){
