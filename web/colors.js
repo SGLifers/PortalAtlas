@@ -4,6 +4,12 @@ export function linearColor(record){
   return Array.isArray(rgb)&&rgb.length===3&&rgb.every(v=>Number.isFinite(v)&&v>=0&&v<=1)?rgb:null;
 }
 
+export function coveragePercent(appearance){
+  const coverage=appearance?.coverage,total=coverage?.visibleTriangles,colored=coverage?.coloredTriangles;
+  if(!Number.isSafeInteger(total)||total<=0||!Number.isSafeInteger(colored)||colored<0||colored>total)return null;
+  return Math.round(colored/total*1000)/10;
+}
+
 export function validSections(row,indexCount,vertexCount){
   if(!row||row.indexCount!==indexCount||row.vertices!==vertexCount||!Array.isArray(row.slots)||row.slots.length>256||!Array.isArray(row.sections)||!row.sections.length)return false;
   let end=0;

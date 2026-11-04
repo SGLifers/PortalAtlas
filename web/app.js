@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from './vendor/OrbitControls.js';
-import { linearColor,validSections,surfaceSlots } from './colors.js';
+import { linearColor,coveragePercent,validSections,surfaceSlots } from './colors.js';
 import { captureMapView,screenshotFilename,downloadScreenshot } from './screenshot.js';
 import { normalizeGroups,groupVisibility,wallsInBox } from './portal-groups.js';
 
@@ -137,7 +137,8 @@ function applySurfaceMode(){
   renderer.toneMapping=colored?THREE.ACESFilmicToneMapping:THREE.NoToneMapping;
   hemisphere.intensity=colored ? 0.85 : 2.4;light.intensity=colored ? 1.3 : 2.7;fill.intensity=colored ? 0.3 : 0.8;
   for(const mesh of geometryGroup.children)mesh.material=colored&&mesh.userData.surfaceMaterials?mesh.userData.surfaceMaterials:geometryMaterial;
-  $('map-colors-status').textContent=!appearance?.available?(appearance?.reason||'Reading surface colors…'):colored?'Simplified asset colors · unresolved surfaces stay neutral':'Neutral overview';
+  const coverage=coveragePercent(appearance);
+  $('map-colors-status').textContent=!appearance?.available?(appearance?.reason||'Reading surface colors…'):colored?'Simplified asset colors'+(coverage===null?'':` · ${coverage}% of mesh triangles`)+' · unresolved stay neutral':'Neutral overview';
   $('map-colors-status').title=appearance?.description||$('map-colors-status').textContent;
 }
 function materialFor(id){
@@ -356,7 +357,7 @@ async function loadScene(mid) {
     const groups=new Map();for(const instance of s.instances){if(!instance.visible)continue;const slots=surfaceSlots(appearance?.meshes?.[instance.mesh],appearance?.components?.[instance.name]);const key=JSON.stringify([instance.mesh,slots]);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(instance);}
     const entries=[...groups.entries()];let complete=0,failed=0,cursor=0;
     await Promise.all(Array.from({length:Math.min(10,entries.length)},async()=>{
-      while(cursor<entries.length){const [,instances]=entries[cursor++],id=instances[0].mesh;try{const proxy=s.meshes.find(m=>m.id===id)?.viewProxy,g=await fetchMesh(id,proxy,gen);if(gen!==state.generation)return;const mesh=new THREE.InstancedMesh(g,geometryMaterial,instances.length);const row=appearance?.meshes?.[id];if(!proxy&&validSections(row,g.index.count,g.attributes.position.count)){g.clearGroups();for(const section of row.sections)g.addGroup(section.start,section.count,section.slot);mesh.userData.surfaceMaterials=surfaceSlots(row,appearance?.components?.[instances[0].name]).map(materialFor);}instances.forEach((v,i)=>mesh.setMatrixAt(i,matrix(v.matrix)));mesh.computeBoundingSphere();geometryGroup.add(mesh);}catch(e){failed++;}complete++;if(gen===state.generation)loading('Loading '+s.name,`${complete} / ${entries.length} mesh assets${failed?' · '+failed+' unavailable':''}`);}
+      while(cursor<entries.length){const [,instances]=entries[cursor++],id=instances[0].mesh;try{const proxy=s.meshes.find(m=>m.id===id)?.viewProxy,g=await fetchMesh(id,proxy,gen);if(gen!==state.generation)return;const mesh=new THREE.InstancedMesh(g,geometryMaterial,instances.length);const row=appearance?.meshes?.[id];if(validSections(row,g.index.count,g.attributes.position.count)){g.clearGroups();for(const section of row.sections)g.addGroup(section.start,section.count,section.slot);mesh.userData.surfaceMaterials=surfaceSlots(row,appearance?.components?.[instances[0].name]).map(materialFor);}instances.forEach((v,i)=>mesh.setMatrixAt(i,matrix(v.matrix)));mesh.computeBoundingSphere();geometryGroup.add(mesh);}catch(e){failed++;}complete++;if(gen===state.generation)loading('Loading '+s.name,`${complete} / ${entries.length} mesh assets${failed?' · '+failed+' unavailable':''}`);}
     }));
     if(gen!==state.generation)return;applySurfaceMode();$('loading').classList.add('hidden');geometryGroup.visible=$('show-geometry').checked;$('capture-view').disabled=false;
     if(!s.nodes.length)toast('This map has no resolved player portal walls. Check its extraction notes.');

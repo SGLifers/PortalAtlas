@@ -94,21 +94,44 @@ public static class ColorExporter
         foreach(var row in scene["meshes"]!)
         {
             var id=row["id"]!.Value<string>()!;var path=row["path"]!.Value<string>()!;
-            if(row["viewProxy"]?.Value<bool>()==true)continue;
             try
             {
+                var metadata=Path.Combine("data/extracted/meshes",id+".json");
+                if(File.Exists(metadata) && JObject.Parse(File.ReadAllText(metadata))["terrain"]?.Value<bool>()==true)
+                {
+                    var component=Asset(path);var properties=component["Properties"];
+                    var refs=Property(properties,"MaterialInstances") as JArray ?? [];
+                    var terrainLod=row["lod"]!.Value<int>();
+                    var lodSlots=Property(properties,"LODIndexToMaterialIndex") as JArray ?? [];
+                    var slot=terrainLod<lodSlots.Count ? lodSlots[terrainLod]!.Value<int>() : refs.Count==1 ? 0 : -1;
+                    var material=Material(Reference(Property(properties,"OverrideMaterial")) ?? (slot>=0 && slot<refs.Count ? Reference(refs[slot]) : null));
+                    var count=row["triangles"]!.Value<int>()*3;
+                    meshes[id]=new{kind="landscape-heightfield",slots=new[]{material},vertices=row["vertices"]!.Value<int>(),indexCount=count,lod=terrainLod,
+                        sections=new[]{new{start=0,count,slot=0}}};
+                    continue;
+                }
                 var mesh=Package(path).GetExports().OfType<UStaticMesh>().First();
                 var lodIndex=row["lod"]!.Value<int>();var lod=mesh.RenderData!.LODs![lodIndex];
-                var json=JObject.FromObject(mesh);
-                var slots=(Property(json["Properties"],"StaticMaterials") as JArray ?? []).Select(v=>Material(Reference(Property(v,"MaterialInterface")))).ToArray();
-                // Some engine versions serialize slots natively rather than as properties.
-                if(slots.Length==0)slots=mesh.Materials.Select(r=>Material(r?.Load()?.GetPathName())).ToArray();
+                // Read native slots without expanding every vertex/index LOD into JSON.
+                if(row["viewProxy"]?.Value<bool>()==true)
+                {
+                    // Single-material sources have an unambiguous uniform preview
+                    // on collision hulls. Multi-material proxies remain neutral.
+                    if(mesh.Materials.Length!=1 || lod.Sections.Any(s=>s.MaterialIndex!=0))continue;
+                    var material=Material(mesh.Materials[0]?.Load()?.GetPathName());
+                    using var buffer=new BinaryReader(File.OpenRead(Path.Combine("data/extracted/proxies",id+".bin")));
+                    var nv=buffer.ReadUInt32();var ni=buffer.ReadUInt32();
+                    meshes[id]=new{kind="single-material-proxy",sourceSlotCount=1,slots=new[]{material},vertices=nv,indexCount=ni,lod=lodIndex,
+                        sections=new[]{new{start=0,count=ni,slot=0}}};
+                    continue;
+                }
+                var slots=mesh.Materials.Select(r=>Material(r?.Load()?.GetPathName())).ToArray();
                 var indices=lod.IndexBuffer!.Buffer!.Length;
                 if(indices!=row["triangles"]!.Value<int>()*3)throw new InvalidDataException("LOD does not match existing geometry");
                 meshes[id]=new{slots,vertices=lod.PositionVertexBuffer!.Verts.Length,indexCount=indices,lod=lodIndex,
                     sections=lod.Sections.Select(s=>new{start=s.FirstIndex,count=s.NumTriangles*3,slot=s.MaterialIndex}).ToArray()};
             }
-            catch(Exception e){errors.Add(new{mesh=id,path,error=e.GetType().Name});}
+            catch(Exception e){errors.Add(new{mesh=id,path,error=e.GetType().Name,note=e.Message});}
             if(meshes.Count%50==0)Console.Error.WriteLine($"COLOR MESHES {meshes.Count}/{scene["meshes"]!.Count()}");
         }
         foreach(var level in scene["source"]!["levels"]!)

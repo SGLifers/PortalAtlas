@@ -355,3 +355,62 @@ left-list group highlights=0, while retaining10 selected members and69/69 shown.
 git diff --check passed. Browser automation had transient frame/evaluation delays
 during reload; a fresh read confirmed Loading hidden and normal app state before
 continuing. These were automation delays, not app console errors.
+
+## Active follow-up — all-map asset color rollout, 2026-11-03
+
+User requested color support for all other maps. Work is in progress. Preserve
+the same representative parameter-color qualification; no screenshot sampling,
+guessed asset-name colors, texture evaluation or live game-host operations.
+
+Added --all-arenas and --refresh to tools/import_colors.py. Batch includes25
+already-imported standalone arena/training datasets and excludes Ozone/Ozone
+Graffiti shared sublevel libraries. It holds the existing import lock, limits
+reader processors to2, validates a staging sidecar before atomic publication,
+reuses validated current outputs, records per-map progress/failures in ignored
+data/color-import-report.json and continues after individual failures. Failed
+validation retains the last published sidecar and saves diagnostic JSON under
+.local/<map>-colors-rejected.json. Per-map reader logs remain in .local/.
+
+tools/audit_colors.py checks map/revision, asset/parameter provenance, finite
+linear RGB, mesh buffers/LODs/section coverage, overrides and export errors. It
+measures colored triangles across visible instances, including per-component
+overrides and actual simplified proxy counts (not full source render counts).
+Audit writes data/color-validation-report.json. UI now reports this percentage.
+
+Initial all-map pass exposed landscape heightfields being loaded as static
+meshes; it was intentionally interrupted while Erosion ran to improve the
+reader. Owned wrapper PID29239 was verified by cwd/cmdline before SIGINT; its
+owned reader exited and no import remained before rebuilding. Completed sidecars
+were retained. No geometry/graph inputs were changed. Baseline hashes for all25
+scenes are in .local/color-rollout-scene-baseline.json.
+
+ColorExporter now reads native mesh.Materials directly, avoiding massive JSON
+serialization of all vertex/index LODs. Academy's459 mesh slot arrays and material
+records matched the original pilot exactly after this change. Terrain uses its
+serialized component override or LOD-selected landscape material instance as a
+single representative shader color; terrain layer masks/textures remain excluded.
+Single-material static-mesh proxies can now use their sole source material on
+the collision hull; ambiguous multi-material proxies stay neutral. Sidecar
+sections match the actual proxy buffer. Browser accepts validated proxy sections.
+
+Built with CUE4PARSE_SKIP_NATIVE=1 DOTNET_PROCESSOR_COUNT=2 .tools/dotnet/dotnet
+build tools/AssetReader -c Release -m:2 --no-restore. Success, existing upstream
+Bcl.Memory9.0.0 warning and pre-existing FeatureExporter nullable warning remain;
+reader directly references patched9.0.14 as documented earlier. Never rebuild
+while an AssetReader process is running.
+
+Current verification pilot command (exec session75974):
+`.venv/bin/python tools/import_colors.py MAP_Academy MAP_Bypass MAP_Erosion MAP_Karman_Station --refresh > .local/colors-upgrade.log 2>&1`
+Academy passed69.0%; Bypass now passed63.5% with landscape handling. Erosion was
+at800/1108 appearance meshes when last inspected; processor use about1core and
+RSS1GB. Wait for completion, inspect/fix any rejected outputs, then run the full
+25-map refresh with the improved reader. Existing first-pass report has partial
+coverage values from before corrected proxy denominator; refresh all before
+publishing final coverage table. Five new audit/batch tests and9 Node tests pass.
+Added a real-asset rollout test covering every ready standalone map; run it after
+all imports exist. Full Python tests and final browser QA still required.
+
+Atlas localhost8741 was stopped on this resumed host (old PID1290306 is stale).
+Start this repo's local server for UI verification and record its new owned PID.
+Do not signal the old PID. Portle is user-managed and must not be restarted or
+modified. No subagents were spawned.

@@ -65,4 +65,19 @@ class RealColorTests(unittest.TestCase):
         self.assertEqual(self.colors['errors'],[])
 
 
+@unittest.skipUnless((ROOT/'data/color-import-report.json').is_file(),'Private color rollout not imported')
+class RolloutColorTests(unittest.TestCase):
+    def test_every_standalone_map_has_valid_current_appearance(self):
+        from tools.audit_colors import audit,ready_maps
+        for mid in ready_maps(ROOT):
+            with self.subTest(map=mid):
+                scene=json.loads((ROOT/'data/scenes'/f'{mid}.json').read_text())
+                colors=json.loads((ROOT/'data/appearance'/f'{mid}.json').read_text())
+                result=audit(scene,colors,ROOT/'data/extracted')
+                self.assertTrue(result['passed'],result['errors'])
+                self.assertGreater(result['resolvedMaterials'],0)
+                self.assertEqual(colors['coverage']['coloredTriangles'],result['coloredTriangles'])
+                self.assertEqual(colors['coverage']['visibleTriangles'],result['visibleTriangles'])
+
+
 if __name__=='__main__':unittest.main()
