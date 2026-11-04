@@ -26,6 +26,13 @@ their colors are imported. This is a simplified color preview; original textures
 material masks and game lighting are not reproduced. Routes and cutaway work in
 both modes. See [map colors](docs/MAP_COLORS.md) for scope and import commands.
 
+Click **Screenshot** beside the **3D / Top** controls to download the current map
+viewport as a PNG. It captures the camera angle, surface mode, cutaway, visible
+geometry, portal/route overlays and visible wall labels at the current render
+resolution. Toolbars and side panels are excluded. Hide **Labels** before capture
+for an unlabeled image. Filenames include the map, view and a UTC timestamp.
+Capture happens entirely in the browser and does not upload the image.
+
 ## First setup
 
 Requirements: Linux x64, Python 3.12+, Bash, Git, and either the local Docker game

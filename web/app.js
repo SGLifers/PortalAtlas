@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from './vendor/OrbitControls.js';
 import { linearColor,validSections,surfaceSlots } from './colors.js';
+import { captureMapView,screenshotFilename,downloadScreenshot } from './screenshot.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -93,6 +94,7 @@ function resize(){const r=$('viewport').getBoundingClientRect();renderer.setSize
 new ResizeObserver(resize).observe($('viewport'));
 
 function loading(title, subtitle) {
+  $('capture-view').disabled=true;
   $('loading').classList.remove('hidden');$('loading').querySelector('strong').textContent=title;$('loading').querySelector('span').textContent=subtitle;
 }
 async function fetchMesh(id,viewProxy,generation) {
@@ -219,7 +221,7 @@ async function loadScene(mid) {
     await Promise.all(Array.from({length:Math.min(10,entries.length)},async()=>{
       while(cursor<entries.length){const [,instances]=entries[cursor++],id=instances[0].mesh;try{const proxy=s.meshes.find(m=>m.id===id)?.viewProxy,g=await fetchMesh(id,proxy,gen);if(gen!==state.generation)return;const mesh=new THREE.InstancedMesh(g,geometryMaterial,instances.length);const row=appearance?.meshes?.[id];if(!proxy&&validSections(row,g.index.count,g.attributes.position.count)){g.clearGroups();for(const section of row.sections)g.addGroup(section.start,section.count,section.slot);mesh.userData.surfaceMaterials=surfaceSlots(row,appearance?.components?.[instances[0].name]).map(materialFor);}instances.forEach((v,i)=>mesh.setMatrixAt(i,matrix(v.matrix)));mesh.computeBoundingSphere();geometryGroup.add(mesh);}catch(e){failed++;}complete++;if(gen===state.generation)loading('Loading '+s.name,`${complete} / ${entries.length} mesh assets${failed?' · '+failed+' unavailable':''}`);}
     }));
-    if(gen!==state.generation)return;applySurfaceMode();$('loading').classList.add('hidden');geometryGroup.visible=$('show-geometry').checked;
+    if(gen!==state.generation)return;applySurfaceMode();$('loading').classList.add('hidden');geometryGroup.visible=$('show-geometry').checked;$('capture-view').disabled=false;
     if(!s.nodes.length)toast('This map has no resolved player portal walls. Check its extraction notes.');
     if(failed)toast(`${failed} mesh assets could not be displayed; the extraction notes remain available.`);
     const hash=new URLSearchParams(location.hash.slice(1));if(hash.get('map')===mid){state.start=hash.get('from')||'';state.end=hash.get('to')||'';$('start-wall').value=state.start;$('end-wall').value=state.end;findRoute();}
@@ -278,6 +280,16 @@ $('cutoff-auto').onclick=()=>{
 };
 $('show-labels').onchange=()=>$('node-labels').classList.toggle('hidden',!$('show-labels').checked);
 $('reset-view').onclick=()=>fitView();$('view-top').onclick=()=>fitView('top');$('view-orbit').onclick=()=>fitView();
+$('capture-view').onclick=async()=>{
+  if(!state.scene||!$('loading').classList.contains('hidden'))return;
+  const button=$('capture-view');button.disabled=true;button.setAttribute('aria-busy','true');
+  const filename=screenshotFilename(state.scene.id,$('view-top').classList.contains('active')?'top':'3d');
+  try{
+    const image=await captureMapView({renderer,world,camera,labels:$('node-labels')});
+    downloadScreenshot(image,filename);toast('Map screenshot downloaded as PNG.');
+  }catch(error){toast('Screenshot failed: '+error.message);}
+  finally{button.disabled=!state.scene||!$('loading').classList.contains('hidden');button.removeAttribute('aria-busy');}
+};
 $('choose-arena').onclick=()=>$('import-dialog').showModal();$('map-title').style.cursor='pointer';$('import-button').onclick=()=>$('import-dialog').showModal();$('help-button').onclick=()=>$('help-dialog').showModal();
 for(const b of document.querySelectorAll('[data-close]'))b.onclick=()=>$(b.dataset.close).close();
 for(const b of document.querySelectorAll('[data-objective]'))b.onclick=()=>{state.objective=b.dataset.objective;document.querySelectorAll('[data-objective]').forEach(x=>x.classList.toggle('active',x===b));findRoute();};

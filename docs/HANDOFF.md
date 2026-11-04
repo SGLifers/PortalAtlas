@@ -197,3 +197,46 @@ The requested one-map proof is complete. Full textures/layer evaluation and othe
 map color imports are follow-up work; do not describe this preview as pixel-accurate
 game rendering or as color coverage for the entire catalog. Portle and the live
 game host were untouched.
+
+## Follow-up — current-view PNG screenshot utility, 2026-11-03 (complete)
+
+User requested a screenshot utility for the current view. Added **Screenshot**
+beside the 3D/Top/reset controls. It downloads the map viewport as a PNG at the
+existing WebGL drawing-buffer resolution, preserving camera, surface colors,
+cutaway, geometry visibility, portal walls, route/all-angle overlays and visible
+wall labels. Toolbars/side panels are excluded. Labels hidden in the app are also
+hidden in the export. Filenames include the map, 3d/top mode and UTC timestamp.
+The screenshot is output from the asset-based viewer, never a map input.
+
+`web/screenshot.js` composites a fresh WebGL frame, matching radial background and
+the visible DOM label boxes/text into a temporary 2D canvas. WebGL pixels are
+copied synchronously after render; preserveDrawingBuffer remains off. It encodes
+PNG using toBlob and downloads via a temporary object URL, revoked after60s.
+Capture is entirely browser-local: no uploads, backend changes or dependencies.
+Lost graphics contexts, unavailable canvas/encoding and map-loading states are
+handled with disabled controls or an error toast. Repeat captures are disabled
+while encoding. View tools wrap on narrow screens.
+
+Verification: JS syntax checks passed for web/app.js and web/screenshot.js. Actual
+browser downloads were inspected as PNGs: colored3D with labels/route at1635×2499
+(2,629,276bytes); neutral top view without labels at1635×2499; mobile top view at
+654×932. The 3D image contains geometry, selected labels and route lines rather
+than a blank WebGL frame; alpha is fully opaque over the background. At390×844
+the Screenshot button fits and the document has no horizontal overflow. No console
+warnings/errors were observed. Browser viewport override reset, Academy restored
+to3D/color mode with labels, cutoff25.4m and the saved P01→P06 route selections.
+
+The browser automation's download-event wait timed out for a blob download despite
+the app succeeding; verified the real output files under the known Downloads
+directory instead. A subsequent click confirmed the success toast and re-enabled
+button. No alternate browser-control mechanism was used.
+
+Artifacts: `.local/map-screenshot-example.png` is an unmodified copy of the final
+utility output; `.local/screenshot-utility-preview.png` shows the app/control.
+Original QA downloads remain in `/home/lambchopper67/Downloads/` with prefix
+`portal-atlas-Academy-`. Their UTC timestamps fall on Nov4, corresponding to the
+user's Nov3 Pacific session. Assets and screenshots remain ignored by Git.
+
+README and in-app Help explain capture. No geometry, route computation, scene data,
+Portle or game-host changes. No server restart needed; owned Atlas PID1290306
+continues at localhost8741. Existing Atlas browser tab3 marked deliverable.
