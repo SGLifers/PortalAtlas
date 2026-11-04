@@ -6,6 +6,7 @@ import { captureMapView,screenshotFilename,downloadScreenshot } from './screensh
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const state = { maps:[], scene:null, selected:null, start:'',end:'', objective:'fastest', blocked:new Set(),route:null, generation:0,routeGeneration:0 };
+state.hiddenPortals=new Set();
 let toastTimer;
 function toast(text) { $('toast').textContent=text;$('toast').classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.add('hidden'),4300); }
 async function api(path, payload) {
@@ -38,6 +39,25 @@ const wallMeshes=new Map(),labelElements=new Map(),meshCache=new Map();
 let bounds=null,hover=null;
 let cutoffHeight=null;
 const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
+
+function portalVisible(id){return $('show-portals').checked&&!state.hiddenPortals.has(id);}
+function readHiddenPortals(){try{const value=JSON.parse(localStorage.getItem('portal-atlas-hidden-portals')||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch{return {};}}
+function applyPortalVisibility(remember=false){
+  for(const object of wallGroup.children)object.visible=portalVisible(object.userData.portalId);
+  for(const [id,label] of labelElements)if(!portalVisible(id))label.style.display='none';
+  edgeGroup.visible=routeGroup.visible=$('show-portals').checked;
+  $('visible-portal-count').textContent=`${state.scene?.nodes.filter(n=>portalVisible(n.id)).length||0} / ${state.scene?.nodes.length||0} shown`;
+  $('only-selected-portal').disabled=!state.selected;
+  for(const option of $('capture-portal-list').options)option.selected=!state.hiddenPortals.has(option.value);
+  if(remember&&state.scene){try{const saved=readHiddenPortals();saved[state.scene.id]=[...state.hiddenPortals];localStorage.setItem('portal-atlas-hidden-portals',JSON.stringify(saved));}catch{}}
+  drawEdges();drawRoute();
+}
+function setPortalVisibility(action){
+  if(!state.scene)return;
+  $('show-portals').checked=true;
+  state.hiddenPortals=new Set(action==='all'?[]:state.scene.nodes.filter(n=>action!=='selected'||n.id!==state.selected).map(n=>n.id));
+  applyPortalVisibility(true);renderWallList();
+}
 
 function readCutoffHeights(){
   try{const value=JSON.parse(localStorage.getItem('portal-atlas-cutoff-heights')||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch{return {};}
@@ -121,8 +141,8 @@ function makeWalls() {
     } else { g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(positions,3));g.setIndex([0,1,2,0,2,3]); }
     g.computeVertexNormals();
     const material=new THREE.MeshBasicMaterial({color:0x70e7d6,side:THREE.DoubleSide,transparent:true,opacity:.53,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3});
-    const mesh=new THREE.Mesh(g,material);mesh.userData.node=n;wallGroup.add(mesh);wallMeshes.set(n.id,mesh);
-    const line=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(outline),new THREE.LineBasicMaterial({color:0x91ffe8,transparent:true,opacity:.65}));wallGroup.add(line);
+    const mesh=new THREE.Mesh(g,material);mesh.userData.node=n;mesh.userData.portalId=n.id;wallGroup.add(mesh);wallMeshes.set(n.id,mesh);
+    const line=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(outline),new THREE.LineBasicMaterial({color:0x91ffe8,transparent:true,opacity:.65}));line.userData.portalId=n.id;wallGroup.add(line);
     const label=document.createElement('span');label.className='node-label';label.textContent=n.label;$('node-labels').append(label);labelElements.set(n.id,label);
   }
 }
@@ -132,6 +152,7 @@ function drawEdges() {
   for(const kind of ['portal','movement']) {
     const lines=[];
     for(const e of edges) {
+      if(!portalVisible(e.source)||!portalVisible(e.target))continue;
       if((e.kind==='portal')!==(kind==='portal'))continue;
       const pts=e.kind==='portal' ? [e.path[1],e.path[2]] : e.path;
       for(let i=1;i<pts.length;i++)lines.push(...vec(pts[i-1]).toArray(),...vec(pts[i]).toArray());
@@ -144,6 +165,7 @@ function drawEdges() {
 function drawRoute() {
   disposeGroup(routeGroup);
   for(const e of state.route?.edges || []) {
+    if(!portalVisible(e.source)||!portalVisible(e.target))continue;
     const pts=e.kind==='portal' ? [e.path[1],e.path[2]] : e.path;
     const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map(vec)),new THREE.LineDashedMaterial({color:e.kind==='portal'?0xd0bbff:0xffd394,dashSize:.7,gapSize:.3,transparent:true,opacity:1,depthTest:false}));line.computeLineDistances();routeGroup.add(line);
     const orb=new THREE.Mesh(new THREE.SphereGeometry(.2,12,8),new THREE.MeshBasicMaterial({color:e.kind==='portal'?0xd8caff:0xffd394,depthTest:false}));orb.position.copy(vec(e.path[e.path.length-1]));routeGroup.add(orb);
@@ -158,8 +180,9 @@ function updateWallStyles() {
 }
 function renderWallList(){
   const query=$('wall-search').value.toLowerCase();
-  $('wall-list').innerHTML=(state.scene?.nodes || []).filter(n=>(n.label+' '+n.name).toLowerCase().includes(query)).map(n=>`<button class="wall-row ${n.id===state.selected?'selected':''}" data-wall="${n.id}"><span class="wall-id">${esc(n.label)}</span><span class="wall-name">${n.launch?'Launch wall':n.type.includes('Circular')?'Circular wall':'Portal wall'}<small>${n.width.toFixed(1)} × ${n.height.toFixed(1)} m · Z ${n.position[2].toFixed(1)}</small></span><span class="wall-state ${state.blocked.has(n.id)?'blocked':''}"></span></button>`).join('');
+  $('wall-list').innerHTML=(state.scene?.nodes || []).filter(n=>(n.label+' '+n.name).toLowerCase().includes(query)).map(n=>`<div class="wall-item"><input type="checkbox" data-portal-visible="${n.id}" aria-label="Show portal ${esc(n.label)}" ${!state.hiddenPortals.has(n.id)?'checked':''}><button class="wall-row ${n.id===state.selected?'selected':''}" data-wall="${n.id}"><span class="wall-id">${esc(n.label)}</span><span class="wall-name">${n.launch?'Launch wall':n.type.includes('Circular')?'Circular wall':'Portal wall'}<small>${n.width.toFixed(1)} × ${n.height.toFixed(1)} m · Z ${n.position[2].toFixed(1)}</small></span><span class="wall-state ${state.blocked.has(n.id)?'blocked':''}"></span></button></div>`).join('');
   $('wall-list').querySelectorAll('[data-wall]').forEach(b=>b.onclick=()=>selectWall(b.dataset.wall));
+  $('wall-list').querySelectorAll('[data-portal-visible]').forEach(input=>input.onchange=()=>{input.checked?state.hiddenPortals.delete(input.dataset.portalVisible):state.hiddenPortals.add(input.dataset.portalVisible);applyPortalVisibility(true);});
 }
 function selectWall(id,{start=false,destination=false}={}){
   const n=state.scene.nodes.find(n=>n.id===id);if(!n)return;state.selected=id;
@@ -171,14 +194,14 @@ function selectWall(id,{start=false,destination=false}={}){
   $('card-start').onclick=()=>{state.start=id;$('start-wall').value=id;updateWallStyles();findRoute();};
   $('card-end').onclick=()=>{state.end=id;$('end-wall').value=id;updateWallStyles();findRoute();};
   $('card-block').onclick=()=>{state.blocked.has(id)?state.blocked.delete(id):state.blocked.add(id);selectWall(id);findRoute();};
-  renderWallList();updateWallStyles();drawEdges();if(start||destination)findRoute();
+  renderWallList();updateWallStyles();drawEdges();$('only-selected-portal').disabled=false;if(start||destination)findRoute();
 }
 let down=null;
 renderer.domElement.addEventListener('pointerdown',event=>{down=[event.clientX,event.clientY];});
 renderer.domElement.addEventListener('pointerup',event=>{
   if(!state.scene || !down || event.button!==0 || Math.hypot(event.clientX-down[0],event.clientY-down[1])>5)return;
   const r=renderer.domElement.getBoundingClientRect();pointer.set((event.clientX-r.left)/r.width*2-1,-(event.clientY-r.top)/r.height*2+1);raycaster.setFromCamera(pointer,camera);
-  const hits=raycaster.intersectObjects([...wallMeshes.values()]);if(hits.length)selectWall(hits[0].object.userData.node.id,{start:event.shiftKey,destination:!event.shiftKey});
+  const hits=raycaster.intersectObjects([...wallMeshes.values()].filter(mesh=>portalVisible(mesh.userData.node.id)));if(hits.length)selectWall(hits[0].object.userData.node.id,{start:event.shiftKey,destination:!event.shiftKey});
 });
 function renderMaps(){
   const query=$('map-search').value.toLowerCase();const ready=state.maps.filter(m=>m.ready&&!m.library);$('map-count').textContent=ready.length;
@@ -191,6 +214,7 @@ async function loadScene(mid) {
   try {
     const s=await api('/api/maps/'+mid);if(gen!==state.generation)return;
     state.scene=s;state.start='';state.end='';state.selected=null;state.blocked.clear();state.route=null;$('wall-search').value='';document.querySelector('.right-panel').scrollTop=0;
+    const hidden=readHiddenPortals()[mid];state.hiddenPortals=new Set(Array.isArray(hidden)?hidden.filter(id=>s.nodes.some(n=>n.id===id)):[]);
     if(new URLSearchParams(location.hash.slice(1)).get('map')!==mid)history.replaceState(null,'','#'+new URLSearchParams({map:mid}));
     for(const g of [geometryGroup,wallGroup,edgeGroup,routeGroup])disposeGroup(g);
     for(const material of surfaceMaterials.values())material.dispose();surfaceMaterials.clear();appearance=null;
@@ -205,7 +229,8 @@ async function loadScene(mid) {
     $('start-wall').innerHTML=options;$('end-wall').innerHTML=options;renderWallList();renderMaps();renderResult();
     const vs=s.nodes.map(n=>vec(n.position));bounds=new THREE.Box3().setFromPoints(vs.length?vs:[new THREE.Vector3(-10,0,-10),new THREE.Vector3(10,0,10)]);fitView();
     const center=bounds.getCenter(new THREE.Vector3());grid=new THREE.GridHelper(300,120,0x344d4d,0x23383e);grid.position.set(center.x,bounds.min.y-1.5,center.z);grid.material.transparent=true;grid.material.opacity=.32;world.add(grid);
-    makeWalls();updateWallStyles();
+    $('capture-portal-list').innerHTML=s.nodes.map(n=>`<option value="${n.id}">${esc(n.label)}</option>`).join('');
+    makeWalls();updateWallStyles();applyPortalVisibility();renderWallList();
     const savedHeight=readCutoffHeights()[mid];
     setCutoffHeight(Number.isFinite(savedHeight)?savedHeight:bounds.max.y+1);
     $('dataset-details').innerHTML=`<p>${s.source.coverage?.landscapeRead??0} terrain patches · ${s.instances.length.toLocaleString()} mesh instances · ${s.source.geometryTriangles.toLocaleString()} instanced proxy triangles.</p><p>Base walk ${s.model.walkSpeed} m/s${s.model.assetParameters?.walkSpeed?' from the character asset':''}. Gravity and jump behavior are estimated; active mode modifiers are not resolved.</p><p class="${s.issues.length?'issue-count':''}">${s.issues.length} extraction notes. <button class="secondary" id="show-source-notes">Inspect sources</button></p><code>${esc(s.rootPackage)}<br>Revision ${esc(s.revision)}</code>`;
@@ -269,6 +294,10 @@ $('map-search').oninput=renderMaps;$('wall-search').oninput=renderWallList;
 $('start-wall').onchange=findRoute;$('end-wall').onchange=findRoute;$('find-route').onclick=findRoute;
 $('swap-walls').onclick=()=>{const a=$('start-wall').value;$('start-wall').value=$('end-wall').value;$('end-wall').value=a;findRoute();};
 $('show-geometry').onchange=()=>geometryGroup.visible=$('show-geometry').checked;$('cutaway').onchange=applyCutaway;$('show-edges').onchange=drawEdges;
+$('show-portals').onchange=()=>applyPortalVisibility();
+$('show-all-portals').onclick=()=>setPortalVisibility('all');$('hide-all-portals').onclick=()=>setPortalVisibility('none');$('only-selected-portal').onclick=()=>setPortalVisibility('selected');
+$('capture-show-all').onclick=()=>setPortalVisibility('all');$('capture-hide-all').onclick=()=>setPortalVisibility('none');
+$('capture-portal-list').onchange=()=>{const shown=new Set([...$('capture-portal-list').selectedOptions].map(option=>option.value));state.hiddenPortals=new Set(state.scene.nodes.filter(n=>!shown.has(n.id)).map(n=>n.id));$('show-portals').checked=true;applyPortalVisibility(true);renderWallList();};
 $('cutoff-slider').oninput=()=>setCutoffHeight($('cutoff-slider').valueAsNumber,{remember:true});
 $('surface-mode').onchange=()=>{preferredSurfaceMode=$('surface-mode').value;try{localStorage.setItem('portal-atlas-surface-mode',preferredSurfaceMode);}catch{}applySurfaceMode();};
 $('cutoff-height').oninput=()=>setCutoffHeight($('cutoff-height').valueAsNumber,{remember:true,updateNumber:false});
@@ -305,7 +334,7 @@ function animate(){
   for(const {n,v} of labels){
     const el=labelElements.get(n.id);if(!el)continue;
     const x=(v.x+1)/2*width,y=(1-v.y)/2*height,cx=Math.floor(x/40),cy=Math.floor(y/20);
-    let hidden=v.z>1||v.z< -1||Math.abs(v.x)>1||Math.abs(v.y)>1;
+    let hidden=!portalVisible(n.id)||v.z>1||v.z< -1||Math.abs(v.x)>1||Math.abs(v.y)>1;
     if(!hidden&&!priority.has(n.id))for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
       if((cells.get(`${cx+dx},${cy+dy}`)||[]).some(p=>Math.abs(p[0]-x)<37&&Math.abs(p[1]-y)<19))hidden=true;
     }

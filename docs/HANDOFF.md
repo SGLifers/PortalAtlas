@@ -240,3 +240,28 @@ user's Nov3 Pacific session. Assets and screenshots remain ignored by Git.
 README and in-app Help explain capture. No geometry, route computation, scene data,
 Portle or game-host changes. No server restart needed; owned Atlas PID1290306
 continues at localhost8741. Existing Atlas browser tab3 marked deliverable.
+
+## Follow-up — portal visibility for manual Portle clues, 2026-11-03
+
+User now wants to author Portle clues manually using Atlas screenshots, and
+explicitly authorized changes to both independent repositories. Atlas still reads
+game geometry from assets; screenshots are clue outputs, never map inputs.
+
+Added global **Portals** overlay toggle; per-wall visibility checkboxes; Show all,
+Hide all and Only selected controls; and a capture-panel multi-select under
+**Choose portals for clues** (also accessible on mobile where the left panel is
+hidden). These control portal meshes/outlines, labels and connected angle/route
+overlay lines. Hidden walls are excluded from viewport picking. The graph and
+route costs remain unchanged; this is distinct from Avoid/blocking a route wall.
+Actual map mesh geometry is not removed. Per-map hidden IDs are stored separately
+in browser localStorage (`portal-atlas-hidden-portals`), with guarded loading.
+
+Browser QA: Academy Hide all gave0/69 visible with0 visible label elements; checking
+P01 gave1/69; reload retained1/69; multi-selecting P01/P02 gave2/69; global Portals
+off gave0/69. Restored Show all at handoff (69/69). Screenshot utility works with
+the selected subset. No console warnings/errors. JavaScript syntax check passed.
+Screenshot `.local/portal-visibility-preview.png` shows the one-portal setup.
+
+Current Atlas server remains PID1290306 at localhost8741; no restart needed. No
+asset import, geometry change, graph rebuild or live game-host interaction.
+Portle's separate manual editor is being verified in its own repository.

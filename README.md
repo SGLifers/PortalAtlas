@@ -33,6 +33,13 @@ resolution. Toolbars and side panels are excluded. Hide **Labels** before captur
 for an unlabeled image. Filenames include the map, view and a UTC timestamp.
 Capture happens entirely in the browser and does not upload the image.
 
+For Portle clue captures, use **Portals** to toggle all portal overlays, or open
+**Choose portals for clues** to select a subset. The portal list also has individual
+visibility checkboxes plus **Show all**, **Hide all** and **Only selected**.
+Hidden portals lose their labels and connected overlay lines in the viewer and
+screenshots. Visibility is remembered per map and does not exclude walls from
+route planning. The map's underlying wall geometry remains intact.
+
 ## First setup
 
 Requirements: Linux x64, Python 3.12+, Bash, Git, and either the local Docker game
