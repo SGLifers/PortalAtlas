@@ -462,3 +462,45 @@ Browser QA on tab5: Core color mode reports81.1%; Neutral survives reload; switc
 back to Map colors and selecting Bypass reports63.5%. Geometry rendered, with
 colored proxy surfaces visible on Core. Remaining GUI cutaway/screenshot checks
 and final proof screenshot are pending. Atlas server is still PID32297/session10355.
+
+## All-map color rollout — complete
+
+All25 standalone arena/training datasets now have current validated appearance
+sidecars. Completion batch session50831 exited0. Every map passed the independent
+tools/audit_colors.py audit with no mesh/level/material exceptions. Total4199
+recovered material records across map exports (shared assets counted per map).
+Rendered mesh triangle coverage ranges0.1% (Training) to85.4% (Terra13). This is
+still a representative parameter-color preview; texture-heavy maps such as
+Training/Abyss remain mostly neutral. No guessed colors or image sampling added.
+Full per-map table and qualifications are in docs/MAP_COLORS.md.
+
+Final verification:
+- `.venv/bin/python tools/audit_colors.py` passed25/25, report in ignored
+  data/color-validation-report.json.
+- `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 .venv/bin/python -m unittest discover
+  -s tests -v` passed54 tests in2.933s; .local/tests-colors-all.log.
+- Node --test tests/*.test.mjs passed9; Node --check web/app.js passed.
+- Second `tools/import_colors.py --all-arenas` run validated/reused25/25 outputs,
+  invoked no reader and exited0; .local/colors-resume-check.log.
+- All25 scene/graph JSON SHA256 values exactly match the pre-rollout baseline.
+- Bounded two-worker HTTP sweep returned available=true/current revisions and
+  coverage for all25 /api/colors/<map> endpoints.
+
+Browser QA on the human-opened valid HTTP Atlas tab5: Core81.1% color view; Neutral
+persisted through reload; Bypass63.5% with visible purple/red foliage, landscape
+and architecture. Checked a20m cutoff, Cutaway off/on and top/orbit switching.
+Restored Bypass's prior17m cutoff and3D view. Screenshot utility displayed the
+success toast and re-enabled its button; browser download-event API timed out
+without exposing a saved file path, so no new independent PNG-file inspection
+is claimed. Native UI proof saved .local/all-map-colors-preview.png.
+At390×844, coverage label fits and document has no horizontal overflow. Override
+reset; user tab5 marked deliverable. No console warnings/errors. Old error-page
+tabs1/2 and Portle tab3 were left untouched.
+
+Atlas continues at localhost8741, owned PID32297 in foreground exec session10355,
+tracked by .local/server.pid. Keep running; verify identity before any signal.
+No asset import jobs remain. Proprietary sidecars, logs and screenshots are
+ignored. No game installation/host, route costs/graphs, Portle data or bot changes.
+No required work remains for this request. Future fidelity work is texture/UV
+support, actual terrain-layer evaluation and transparency; retain provenance and
+current neutral fallback until those inputs are supported.

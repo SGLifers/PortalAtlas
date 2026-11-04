@@ -38,19 +38,49 @@ portal overlays and the grid are excluded. It is not surface-area coverage or an
 accuracy score. Texture-driven materials often have no supported tint parameter,
 so coverage can be low even when the entire map was imported successfully.
 
-Academy recovery currently includes:
+## Validated map coverage
 
-| Item | Count |
-| --- | ---: |
-| Existing mesh assets with appearance sections | 459 |
-| Referenced materials | 441 |
-| Materials with usable color parameters | 179 |
-| Materials retaining neutral fallback | 262 |
-| Component override arrays | 1,297 |
+All 25 standalone arena/training scenes in this installed dataset have current
+validated appearance data. Shared Ozone/Ozone Graffiti sublevel libraries are
+excluded. Each export has zero mesh/level/material exceptions. Material counts
+include component overrides and embedded landscape instances; shared materials
+are counted separately for each map. Unresolved records remain explicit fallbacks.
 
-Resolved parameters apply to roughly 69% of visible instanced mesh triangles.
-That is a triangle-count measure, not surface-area coverage or an accuracy score.
-No mesh/level export errors or material exceptions remain in the pilot export.
+| Map | Recovered / referenced materials | Colored mesh triangles |
+| --- | ---: | ---: |
+| Abyss | 35 / 172 | 0.7% |
+| Academy | 179 / 441 | 69.0% |
+| Bypass | 183 / 909 | 63.5% |
+| Containment | 39 / 97 | 77.4% |
+| Core | 144 / 404 | 81.1% |
+| Eden | 148 / 456 | 8.5% |
+| Erosion | 238 / 1714 | 10.1% |
+| Foregone Destruction | 36 / 197 | 13.6% |
+| Fracture | 280 / 1969 | 3.6% |
+| Frontier | 141 / 331 | 53.0% |
+| Glacier | 274 / 2078 | 33.2% |
+| Grit | 85 / 433 | 84.2% |
+| Hammerhead | 312 / 901 | 13.3% |
+| HangmanR3 | 33 / 360 | 9.4% |
+| Inferno | 176 / 1305 | 3.5% |
+| Karman Station | 54 / 144 | 12.0% |
+| Oasis | 136 / 349 | 71.0% |
+| Ozone Night | 225 / 1174 | 71.4% |
+| Runway | 556 / 1885 | 43.9% |
+| Sanctum | 235 / 1407 | 12.0% |
+| Stadium | 160 / 579 | 61.9% |
+| Terra13 | 115 / 369 | 85.4% |
+| Training | 5 / 119 | 0.1% |
+| TriHard | 32 / 122 | 61.3% |
+| Zenith | 378 / 986 | 62.2% |
+
+The wide coverage range is expected for a parameter-only preview. In particular,
+Training and Abyss rely heavily on unsupported texture/shader inputs; most of
+their surfaces remain neutral. No colors are fabricated to fill those gaps.
+
+Academy remains the parity reference: its complete material, mesh section and
+component override tables match the original pilot after reader optimizations.
+All 25 scene/graph files stayed byte-identical throughout the rollout.
 
 ## Import or refresh colors
 
@@ -105,20 +135,26 @@ import colors. Extracted materials and color sidecars stay out of Git.
   RGB colors, applies cutaway planes to every surface material, and disposes color
   resources when changing arenas. A stale asynchronous map response is discarded.
 
-Validation: **48 Python tests** and **5 Node tests** pass. Real-asset tests compare
-all appearance section counts to the existing mesh buffers, verify color
+Validation: **54 Python tests** and **9 Node tests** pass. Real-asset tests compare
+all 25 current sidecars and appearance section counts to the existing mesh/proxy buffers, verify color
 provenance/finite linear values and preserve component overrides. API tests cover
 missing, stale, malformed and wrong-map appearance data. Node tests cover gaps,
 overlapping sections, unsafe material slots, invalid colors and independent
 instance assignments.
 
-Browser checks confirmed the Academy color view, Neutral preference persistence,
+The original pilot browser checks confirmed the Academy color view, Neutral preference persistence,
 colored cutaway at 20 m, clipping off/on, top view, neutral fallback on Abyss and
 return to Academy colors. P01→P06 remained four steps, approximately 4.5 seconds
 and peak difficulty 78 across surface modes. At 390×844 the controls fit without
 horizontal overflow. No browser console warnings/errors were observed.
 
+The all-map rollout also verified Core colors (81.1%), Neutral preference after
+reload, Bypass landscape colors (63.5%), top/orbit switching, cutaway off/on and
+a 20m cutoff, and the screenshot success response. At390×844 the coverage label
+fits without horizontal overflow. No console warnings/errors were observed.
+The browser download-event API did not expose the blob download, so this run
+verifies its success toast rather than claiming independent PNG-file inspection.
+
 Next steps toward a more faithful view are texture/UV extraction, material-layer
-evaluation and transparency handling. A broader map rollout should retain the
-same source qualification and report unresolved materials rather than substitute
-guessed colors.
+evaluation and transparency handling. Keep reporting unresolved materials rather
+than substituting guessed colors.
