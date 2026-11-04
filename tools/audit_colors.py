@@ -103,7 +103,7 @@ def main():
         rows.append(result)
         print(mid,f"{result.get('triangleCoveragePercent',0)}% colored triangles",result['errors'],flush=True)
     report={'passed':all(row['passed'] for row in rows),'maps':rows,
-            'scope':'Representative asset parameter colors; triangle counts include neutral proxies, exclude terrain/grid/portal overlays. Not texture or gameplay fidelity.'}
+            'scope':'Representative asset parameter colors; rendered triangle counts include heightfields and simplified proxies, exclude grid/portal overlays. Not texture or gameplay fidelity.'}
     (ROOT/'data/color-validation-report.json').write_text(json.dumps(report,indent=2))
     return 0 if report['passed'] else 1
 

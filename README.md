@@ -19,10 +19,11 @@ Use the **Cutoff height (m)** slider or number field beneath the layer toggles
 to change the cutaway live. Heights use world Z in metres and are remembered per
 map in this browser. **Auto** restores the map's automatic cutoff height.
 
-**Surfaces → Map colors** enables the Academy color prototype. It uses recovered
+**Surfaces → Map colors** enables asset colors across the imported arenas. It uses recovered
 material color/tint parameters, with neutral fallback for unresolved surfaces.
-The selector remembers your preference. Other arenas retain the neutral view until
-their colors are imported. This is a simplified color preview; original textures,
+The selector remembers your preference and reports recovered triangle coverage.
+Run `tools/import_colors.py --all-arenas` to import colors for ready scenes.
+This is a simplified color preview; original textures,
 material masks and game lighting are not reproduced. Routes and cutaway work in
 both modes. See [map colors](docs/MAP_COLORS.md) for scope and import commands.
 

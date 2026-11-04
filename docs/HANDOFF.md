@@ -437,3 +437,28 @@ browser surfaces. An async user question requests refreshing the existing Atlas
 tab and replying ready; continue import/audit work while awaiting that action.
 Browser QA is pending a genuine refreshed http document, not permission to bypass
 the browser restriction.
+
+Definitive scaling fix: cached loaded IPackage objects by canonical archive path.
+Without it, embedded landscape material references repeatedly reparsed the same
+94MB Erosion level. Verified/stopped owned wrapper32190 (session38500) before the
+final reader rebuild. Pilot Erosion + Karman Station (session68082) then passed
+in13.9s and6.1s respectively, with0 reader/audit errors; Erosion238/1714 material
+colors,10.1% rendered-triangle coverage; Karman54/144,12.0%. Package count is now
+recorded in each reader report. Properties-only/native-slot optimizations remain
+and Academy tables still match the original pilot.
+
+Full25-map completion batch is running in exec session50831:
+`.venv/bin/python tools/import_colors.py --all-arenas > .local/colors-rollout-complete.log 2>&1`
+It reuses the eight validated outputs and imports remaining scenes. Do not
+rebuild until it exits. Afterward audit all25, verify baseline scene hashes,
+exercise all color endpoints, run full Python/Node tests and document coverage.
+
+User replied Ready after opening a NEW live Atlas tab5 in browser2. A subsequent
+attempt on old tab1 was still rejected (its actual page is data: error HTML).
+Inventory then identified the human-opened tab5 with valid http URL/title; bound
+it as verifiedAtlasTab. Old blocked error tabs1/2 were left untouched. This is a
+new allowed document following the user's action, not a bypass of blocked pages.
+Browser QA on tab5: Core color mode reports81.1%; Neutral survives reload; switching
+back to Map colors and selecting Bypass reports63.5%. Geometry rendered, with
+colored proxy surfaces visible on Core. Remaining GUI cutaway/screenshot checks
+and final proof screenshot are pending. Atlas server is still PID32297/session10355.

@@ -50,7 +50,15 @@ public static class ColorExporter
             var match=System.Text.RegularExpressions.Regex.Match(file,@"/([^/]+)/Content/(.+)\.(?:uasset|umap)$");
             if(match.Success)aliases.TryAdd("/"+(match.Groups[1].Value=="PortalWars2"?"Game":match.Groups[1].Value)+"/"+match.Groups[2].Value,file);
         }
-        CUE4Parse.UE4.Assets.IPackage Package(string path)=>provider.LoadPackage(aliases.TryGetValue(path,out var file)?file:path);
+        // Terrain material instances and their components often share one large
+        // cooked level. Retain its package instead of reparsing it per reference.
+        var packages=new Dictionary<string,CUE4Parse.UE4.Assets.IPackage>(StringComparer.OrdinalIgnoreCase);
+        CUE4Parse.UE4.Assets.IPackage Package(string path)
+        {
+            var key=aliases.TryGetValue(path,out var file)?file:path;
+            if(!packages.TryGetValue(key,out var package))packages[key]=package=provider.LoadPackage(key);
+            return package;
+        }
         JObject Asset(string reference)
         {
             if(assets.TryGetValue(reference,out var cached))return cached;
@@ -169,7 +177,7 @@ public static class ColorExporter
             catch(Exception e){errors.Add(new{level=level.Value<string>(),error=e.GetType().Name});}
         }
         var resolved=materials.Values.Count(m=>m["colorLinear"] is not null);
-        var report=new{meshes=meshes.Count,materials=materials.Count,resolvedMaterials=resolved,unresolvedMaterials=materials.Count-resolved,componentOverrides=components.Count,errors=errors.Count};
+        var report=new{meshes=meshes.Count,materials=materials.Count,resolvedMaterials=resolved,unresolvedMaterials=materials.Count-resolved,componentOverrides=components.Count,packagesRead=packages.Count,errors=errors.Count};
         var result=new{format="portal-atlas-colors",version=1,map,sceneRevision=scene["revision"],
             description="Representative material parameter colors; textures, layer masks, vertex paint, shader switches and game lighting are not evaluated. Unresolved surfaces retain the neutral color.",
             materials,meshes,components,report,errors};
