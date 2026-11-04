@@ -39,6 +39,8 @@ visibility checkboxes plus **Show all**, **Hide all** and **Only selected**.
 Hidden portals lose their labels and connected overlay lines in the viewer and
 screenshots. Visibility is remembered per map and does not exclude walls from
 route planning. The map's underlying wall geometry remains intact.
+Uncheck **Labels** and **Lines** for clean clues without wall IDs or route/angle
+lines, while retaining the portal overlays you selected.
 
 ## First setup
 

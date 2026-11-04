@@ -265,3 +265,15 @@ Screenshot `.local/portal-visibility-preview.png` shows the one-portal setup.
 Current Atlas server remains PID1290306 at localhost8741; no restart needed. No
 asset import, geometry change, graph rebuild or live game-host interaction.
 Portle's separate manual editor is being verified in its own repository.
+
+Final authoring follow-up: added a **Lines** checkbox to hide angle/route overlay
+lines independently while retaining selected portal overlays, and a visible
+portal count inside the capture panel (also on mobile). At390×844, the panel
+successfully hid all (0/69) and selected P01/P02 (2/69), without horizontal overflow.
+Restored Show all and default line visibility. P01→P06 remained4steps/4.5s/78
+difficulty with Lines off. Actual architecture and graph/costs are unchanged.
+JS syntax check passed; no console warnings/errors. Atlas remains PID1290306.
+Portal visibility milestone e642790; use git log for the final capture refinements.
+Portle manual editor is now complete at localhost8742/manage, with an empty real
+library ready for the user's first six-image set. No Atlas data is read by default
+Portle gameplay. Both repos retain independent commits/handoff documentation.

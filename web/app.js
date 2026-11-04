@@ -45,8 +45,9 @@ function readHiddenPortals(){try{const value=JSON.parse(localStorage.getItem('po
 function applyPortalVisibility(remember=false){
   for(const object of wallGroup.children)object.visible=portalVisible(object.userData.portalId);
   for(const [id,label] of labelElements)if(!portalVisible(id))label.style.display='none';
-  edgeGroup.visible=routeGroup.visible=$('show-portals').checked;
+  edgeGroup.visible=routeGroup.visible=$('show-portals').checked&&$('show-lines').checked;
   $('visible-portal-count').textContent=`${state.scene?.nodes.filter(n=>portalVisible(n.id)).length||0} / ${state.scene?.nodes.length||0} shown`;
+  $('capture-visible-count').textContent=$('visible-portal-count').textContent;
   $('only-selected-portal').disabled=!state.selected;
   for(const option of $('capture-portal-list').options)option.selected=!state.hiddenPortals.has(option.value);
   if(remember&&state.scene){try{const saved=readHiddenPortals();saved[state.scene.id]=[...state.hiddenPortals];localStorage.setItem('portal-atlas-hidden-portals',JSON.stringify(saved));}catch{}}
@@ -295,6 +296,7 @@ $('start-wall').onchange=findRoute;$('end-wall').onchange=findRoute;$('find-rout
 $('swap-walls').onclick=()=>{const a=$('start-wall').value;$('start-wall').value=$('end-wall').value;$('end-wall').value=a;findRoute();};
 $('show-geometry').onchange=()=>geometryGroup.visible=$('show-geometry').checked;$('cutaway').onchange=applyCutaway;$('show-edges').onchange=drawEdges;
 $('show-portals').onchange=()=>applyPortalVisibility();
+$('show-lines').onchange=()=>applyPortalVisibility();
 $('show-all-portals').onclick=()=>setPortalVisibility('all');$('hide-all-portals').onclick=()=>setPortalVisibility('none');$('only-selected-portal').onclick=()=>setPortalVisibility('selected');
 $('capture-show-all').onclick=()=>setPortalVisibility('all');$('capture-hide-all').onclick=()=>setPortalVisibility('none');
 $('capture-portal-list').onchange=()=>{const shown=new Set([...$('capture-portal-list').selectedOptions].map(option=>option.value));state.hiddenPortals=new Set(state.scene.nodes.filter(n=>!shown.has(n.id)).map(n=>n.id));$('show-portals').checked=true;applyPortalVisibility(true);renderWallList();};
