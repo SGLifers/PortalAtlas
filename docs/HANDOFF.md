@@ -504,3 +504,21 @@ ignored. No game installation/host, route costs/graphs, Portle data or bot chang
 No required work remains for this request. Future fidelity work is texture/UV
 support, actual terrain-layer evaluation and transparency; retain provenance and
 current neutral fallback until those inputs are supported.
+
+## Relaunch for screenshot preparation — 2026-11-04
+
+User requested reopening Atlas and the Portle clue editor to prepare screenshots.
+Atlas was no longer listening on8741; launched `./run.sh` in exec session49751.
+Current owned listener is PID372689, `.venv/bin/python -m server`, bound only to
+127.0.0.1:8741. Updated ignored .local/server.pid after checking process identity.
+This supersedes old PID32297/session10355 notes; verify identity before signals.
+
+HTTP root returned200. Reloaded the valid user Atlas browser2/tab5 at
+/#map=MAP_Terra13; map renders, Screenshot button is enabled, color coverage85.4%.
+Portle preview/editor was still running on8742, PID213145, and /manage returned200.
+Opened fresh editor tab8, selected Terra13 to match Atlas and left both tabs as
+deliverables. No portal visibility, camera, asset data, clue uploads/publication
+or Discord bot changes were made. Old error tabs were untouched. Native UI proofs
+saved under ignored .local/relaunch-atlas.png and Portle/.local/relaunch-editor.png.
+No code changes/tests required for this operational relaunch. Both servers remain
+running for the user; editor URL is http://127.0.0.1:8742/manage.
