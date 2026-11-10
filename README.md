@@ -162,7 +162,7 @@ current arena, or a checked subset. Each map produces six PNGs and a manifest in
 one downloadable ZIP. No images are uploaded or published to Portle.
 
 Choose a resolution (1280×800, 1600×1000 or 1920×1080), random camera angles per
-clue or one random angle per map, and progressive groups1–N or one disjoint group
+clue or one random angle per map, and progressive groups 1–N or one disjoint group
 per clue. **New seed** makes another distribution. Reusing the seed, map data and
 settings reproduces the portal groups and camera poses. The batch creates its own
 balanced groups without replacing browser-saved groups.
@@ -178,7 +178,7 @@ Progress and Cancel remain available; cancellation discards an unfinished map
 and keeps completed maps in the ZIP. Failed map loads are skipped and listed in
 both the report and manifest. The original map, camera, render resolution, layer
 settings and portal visibility are restored when the run finishes or is cancelled.
-The archive has a384MiB memory limit; choose smaller batches if it is reached.
+The archive has a 384 MiB memory limit; choose smaller batches if it is reached.
 The manifest records map IDs/names, revisions, portal groups, camera poses,
 cutaway/color settings and any errors. Its folders identify answers for author
 review; PNGs have generic clue filenames. Treat the archive as private clue data.

@@ -12,7 +12,7 @@ export function setupBatchCapture(adapter){
     return readyMaps().filter(map=>scope==='all'||(scope==='current'?map.id===adapter.currentMap():selected.has(map.id)));
   }
   function summary(){
-    const maps=chosenMaps();$('batch-summary').textContent=`${maps.length} maps · ${maps.length*6} screenshots`;
+    const maps=chosenMaps();$('batch-summary').textContent=`${maps.length} ${maps.length===1?'map':'maps'} · ${maps.length*6} screenshots`;
     $('batch-map-options').classList.toggle('hidden',$('batch-scope').value!=='selected');
     $('start-batch').disabled=running||!maps.length||!adapter.currentMap();
   }

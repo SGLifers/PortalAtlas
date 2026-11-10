@@ -661,3 +661,40 @@ inspect outputs and save final UI proof, then document results and commit final
 milestone. Atlas listener remains owned PID43818/session46138 at127.0.0.1:8741;
 no restart required for these static frontend changes. No asset import workers,
 Portle/Discord/hosting changes or public uploads. Keep proprietary outputs ignored.
+
+## Batch capture — final verification, 2026-11-09
+
+Implementation committed at cbca2f6. Completed a real all-map browser run with
+seed portle-all-maps-2026-11-09, default 1280x800, separate random camera per clue
+and progressive groups. Finished 25/25 maps and 150 screenshots without errors.
+Downloaded via the normal Download ZIP link to:
+/home/lambchopper67/Downloads/portal-atlas-clues-portle-all-maps-2026-11-09.zip
+(108.5 MiB). Python zipfile.testzip passed; Pillow decoded all 150 PNGs, all
+1280x800 with no embedded metadata and 150 distinct SHA256 hashes. Manifest
+membership checks confirmed all six groups balanced/exclusive with exact portal
+coverage, and every clue's visible IDs equal the corresponding prefix union.
+All 25 original scene hashes match .local/batch-source-baseline.json. Saved
+manifest copy: .local/batch-all-maps-manifest.json. Output stays ignored/local.
+
+Cancellation QA: started all-map run, cancelled during first load, got Cancelled
+0/25 maps and 0 screenshots; original Dought map/visibility/labels/lines/cutoff/
+canvas dimensions restored. The successful Dought and all-map runs restored the
+same baseline too. Selected-map UI checked with 25, one (Dought) and zero checked
+maps: summaries 150/6/0 images and Start disabled for zero. Browser console had
+no errors. Proof of completed full run: .local/batch-capture-complete.png.
+
+Final polish explicitly keeps OrbitControls disabled when group mode resets
+during a batch, fixes singular map summary and README spacing. Reloaded latest
+frontend in browser2/tab11 after these edits. Tests remain 17 Node + 54 Python
+passing; JS syntax/whitespace checks pass. No extra full-map run needed for the
+small control-lock/text changes. Atlas remains running at127.0.0.1:8741 with owned
+PID43818/session46138; leave it available. No Portle, Discord, hosted bot, game,
+source asset or SplitgateHost changes. No remaining required implementation work.
+
+Use Batch clues below the viewer toolbar, select maps/settings, choose New seed
+for another distribution, Start batch, then Download ZIP. Review images before
+manually adding them through the Portle clue editor: random framing fits portal
+apertures but cannot guarantee attractive or unobstructed clue views. Current
+cutoff/surface settings are used; saved manual groups are preserved. Archive
+limit384MiB; smaller subsets/resolutions are available if reached. Commit final
+verification locally only; this Atlas repo has no remote and is not published.

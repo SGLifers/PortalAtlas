@@ -133,7 +133,7 @@ function toggleGroupWall(id){
   state.groupSelection.has(id)?state.groupSelection.delete(id):state.groupSelection.add(id);refreshGroupSelection();
 }
 function setGroupMode(active,{openPanel=false}={}){
-  cancelGroupDrag();state.groupMode=active;controls.enabled=!active;
+  cancelGroupDrag();state.groupMode=active;controls.enabled=!active&&!batchRunning;
   $('viewport').classList.toggle('selecting-walls',active);
   document.querySelector('.viewport-section').classList.toggle('selecting-walls',active);
   $('group-selection-bar').classList.toggle('hidden',!active);
