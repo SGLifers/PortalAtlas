@@ -30,6 +30,7 @@
     <div id="viewport"><canvas id="canvas" aria-label="3D arena with selectable portal walls"></canvas><div id="node-labels"></div></div>
     <div id="loading" class="loading"><div class="loading-symbol">◈</div><strong>Reading your arenas</strong><span>Geometry comes from the installed game files.</span></div>
     <div class="view-tools"><button id="choose-arena" class="seg-button" aria-label="Choose arena">Arenas ⌄</button><span></span><button id="view-orbit" class="seg-button active">3D</button><button id="view-top" class="seg-button">Top</button><span></span><button id="reset-view" class="icon-button" title="Reset view (R)">⤢</button><span></span><button id="capture-view" class="seg-button capture-button" type="button" disabled title="Download the current map view, including visible labels and routes, as a PNG"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M8 6 9.5 3h5L16 6h4v14H4V6Z"/><circle cx="12" cy="12.5" r="3.5"/></svg>Screenshot</button><span></span><button id="toggle-groups" class="secondary groups-toggle" type="button" aria-expanded="false" aria-controls="groups-panel">Wall groups <span id="group-count">0</span></button></div>
+    <button id="open-batch-capture" class="secondary batch-launch" type="button">Batch clues ↗</button>
     <section id="groups-panel" class="groups-panel hidden" aria-label="Portal wall groups">
       <div class="groups-heading"><strong>Portal wall groups</strong><button id="close-groups" class="icon-button" type="button" aria-label="Close wall groups">×</button></div>
       <section class="random-clues" aria-label="Random Portle clue groups">
@@ -81,6 +82,26 @@
   </aside>
 </main>
 <div id="toast" class="toast hidden" role="status"></div>
+<dialog id="batch-dialog" aria-labelledby="batch-title">
+  <div class="dialog-heading"><div><span class="eyebrow">PORTLE CLUE CAPTURE</span><h2 id="batch-title">Capture a batch.</h2></div><button id="close-batch" class="icon-button" type="button" aria-label="Close batch capture">×</button></div>
+  <p>Export six PNGs per map from the asset viewer. Labels, route lines and editing highlights are hidden. Review your images before uploading them to Portle.</p>
+  <fieldset id="batch-settings">
+    <div class="batch-fields">
+      <label>Maps<select id="batch-scope" aria-label="Maps"><option value="all">All imported arenas</option><option value="current">Current arena only</option><option value="selected">Choose arenas below</option></select></label>
+      <label>Image size<select id="batch-size" aria-label="Image size"><option value="1280x800">1280 × 800</option><option value="1600x1000">1600 × 1000</option><option value="1920x1080">1920 × 1080</option></select></label>
+      <label>Camera<select id="batch-camera" aria-label="Camera"><option value="per-clue">Random angle for each clue</option><option value="per-map">One random angle per map</option></select></label>
+      <label>Portal groups<select id="batch-reveal" aria-label="Portal groups"><option value="cumulative">Progressive: groups 1–N</option><option value="single">One disjoint group per clue</option></select></label>
+    </div>
+    <label class="batch-seed-label" for="batch-seed">Random seed</label><div class="batch-seed"><input id="batch-seed" maxlength="120" autocomplete="off"><button id="batch-new-seed" class="secondary" type="button">New seed</button></div>
+    <p class="batch-note">The same seed, map data and settings reproduce the groups and angles. Saved groups and visibility are preserved. Cutaway heights and surface mode use your map settings.</p>
+    <div id="batch-map-options" class="batch-map-options hidden" aria-label="Arenas to capture"></div>
+    <strong id="batch-summary"></strong>
+  </fieldset>
+  <progress id="batch-progress" value="0" max="1" aria-label="Batch capture progress"></progress>
+  <p id="batch-status" role="status">Choose maps and start capturing.</p>
+  <div class="batch-actions"><button id="start-batch" class="primary" type="button">Start capture</button><button id="cancel-batch" class="secondary" type="button" disabled>Cancel</button><a id="batch-download" class="secondary hidden" download>Download ZIP</a></div>
+  <p id="batch-report"></p>
+</dialog>
 <dialog id="import-dialog"><div class="dialog-heading"><div><span class="eyebrow">YOUR INSTALLATION</span><h2>Import an arena</h2></div><button class="icon-button" data-close="import-dialog" aria-label="Close">×</button></div><p>Read a map's packages, resolve portal walls, and check its angle and movement graph.</p><div id="import-list"></div></dialog>
 <dialog id="help-dialog"><div class="dialog-heading"><h2>Explore the portal network</h2><button class="icon-button" data-close="help-dialog" aria-label="Close">×</button></div><p>Drag to orbit, right-drag to pan, and scroll to zoom. Click a portal wall to select a destination. Shift-click sets the start. Press R to reset the view.</p><p>Open Wall groups, then Select walls on map. Click walls or labels to toggle selection, or drag a box around wall centers to add several. Shift-drag removes walls. Camera navigation pauses until Done (or Escape). Name and save the selection; Show, Hide and Only these work on selections or saved groups. Groups are saved per map in this browser, independently of routes.</p><p>For Portle clues, open Wall groups and Create 6 random groups. Each map wall belongs to one balanced group, including hidden walls. Reshuffle creates a new distribution without changing saved selections. Only this shows a single group; Through here shows groups 1–N. Random groups are saved per map in this browser.</p><p>Use Screenshot beside the view controls to download the current map as a PNG, including visible labels and routes. Hide Labels for an unlabeled image. Group editing highlights are excluded from screenshots.</p><p>Purple edges are direct placement opportunities. Amber edges are direct movement paths. A wall's front and back faces remain separate states during routing.</p><p>The graph describes routes supported by the extracted data and this model. Geometry checks do not establish exact in-game collision, and time, aim difficulty, and jump physics need in-game measurement.</p></dialog>
 <script type="module" src="/app.js"></script>

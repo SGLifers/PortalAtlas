@@ -3,6 +3,7 @@ import { OrbitControls } from './vendor/OrbitControls.js';
 import { linearColor,coveragePercent,validSections,surfaceSlots } from './colors.js';
 import { captureMapView,screenshotFilename,downloadScreenshot } from './screenshot.js';
 import { normalizeGroups,groupVisibility,wallsInBox,randomClueGroups,normalizeClueGroups } from './portal-groups.js';
+import {setupBatchCapture} from './batch-ui.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -10,6 +11,7 @@ const state = { maps:[], scene:null, selected:null, start:'',end:'', objective:'
 state.hiddenPortals=new Set();
 state.groupSelection=new Set();state.wallGroups=[];state.editingGroup=null;state.groupMode=false;
 state.clueGroups=[];
+let batchRunning=false,batchControlState=null;
 let toastTimer;
 function toast(text) { $('toast').textContent=text;$('toast').classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.add('hidden'),4300); }
 async function api(path, payload) {
@@ -194,7 +196,7 @@ function fitView(mode='orbit') {
   controls.target.copy(center);controls.maxDistance=r*8;controls.minDistance=2;controls.update();
   $('view-top').classList.toggle('active',mode==='top');$('view-orbit').classList.toggle('active',mode!=='top');
 }
-function resize(){const r=$('viewport').getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();}
+function resize(){if(batchRunning)return;const r=$('viewport').getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();}
 new ResizeObserver(resize).observe($('viewport'));
 new ResizeObserver(()=>{
   const section=document.querySelector('.viewport-section'),tools=document.querySelector('.view-tools');
@@ -202,7 +204,7 @@ new ResizeObserver(()=>{
 }).observe(document.querySelector('.view-tools'));
 
 function loading(title, subtitle) {
-  $('capture-view').disabled=true;
+  $('capture-view').disabled=true;$('open-batch-capture').disabled=true;
   $('loading').classList.remove('hidden');$('loading').querySelector('strong').textContent=title;$('loading').querySelector('span').textContent=subtitle;
 }
 async function fetchMesh(id,viewProxy,generation) {
@@ -340,7 +342,8 @@ function renderMaps(){
   $('map-list').querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>loadScene(b.dataset.map));
   renderImports();
 }
-async function loadScene(mid) {
+async function loadScene(mid,{batch=false}={}) {
+  if(batchRunning&&!batch)return;
   const gen=++state.generation;state.routeGeneration++;loading('Reading arena','Loading extracted geometry and its portal graph.');$('find-route').disabled=false;$('find-route').innerHTML='Find route <span>↗</span>';
   try {
     const s=await api('/api/maps/'+mid);if(gen!==state.generation)return;
@@ -348,7 +351,7 @@ async function loadScene(mid) {
     const hidden=readHiddenPortals()[mid];state.hiddenPortals=new Set(Array.isArray(hidden)?hidden.filter(id=>s.nodes.some(n=>n.id===id)):[]);
     state.clueGroups=normalizeClueGroups(readClueGroupStore()[mid],s.nodes.map(n=>n.id));
     setGroupMode(false);state.groupSelection.clear();state.editingGroup=null;state.wallGroups=normalizeGroups(readGroupStore()[mid],s.nodes.map(n=>n.id));$('group-name').value='';refreshGroupSelection();
-    if(new URLSearchParams(location.hash.slice(1)).get('map')!==mid)history.replaceState(null,'','#'+new URLSearchParams({map:mid}));
+    if(!batch&&new URLSearchParams(location.hash.slice(1)).get('map')!==mid)history.replaceState(null,'','#'+new URLSearchParams({map:mid}));
     for(const g of [geometryGroup,wallGroup,edgeGroup,routeGroup])disposeGroup(g);
     for(const material of surfaceMaterials.values())material.dispose();surfaceMaterials.clear();appearance=null;
     $('surface-mode').disabled=true;$('map-colors-status').textContent='Reading surface colors…';
@@ -376,14 +379,15 @@ async function loadScene(mid) {
     $('surface-mode').disabled=!appearance.available;$('surface-mode').value=appearance.available?preferredSurfaceMode:'neutral';applySurfaceMode();
     const groups=new Map();for(const instance of s.instances){if(!instance.visible)continue;const slots=surfaceSlots(appearance?.meshes?.[instance.mesh],appearance?.components?.[instance.name]);const key=JSON.stringify([instance.mesh,slots]);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(instance);}
     const entries=[...groups.entries()];let complete=0,failed=0,cursor=0;
-    await Promise.all(Array.from({length:Math.min(10,entries.length)},async()=>{
-      while(cursor<entries.length){const [,instances]=entries[cursor++],id=instances[0].mesh;try{const proxy=s.meshes.find(m=>m.id===id)?.viewProxy,g=await fetchMesh(id,proxy,gen);if(gen!==state.generation)return;const mesh=new THREE.InstancedMesh(g,geometryMaterial,instances.length);const row=appearance?.meshes?.[id];if(validSections(row,g.index.count,g.attributes.position.count)){g.clearGroups();for(const section of row.sections)g.addGroup(section.start,section.count,section.slot);mesh.userData.surfaceMaterials=surfaceSlots(row,appearance?.components?.[instances[0].name]).map(materialFor);}instances.forEach((v,i)=>mesh.setMatrixAt(i,matrix(v.matrix)));mesh.computeBoundingSphere();geometryGroup.add(mesh);}catch(e){failed++;}complete++;if(gen===state.generation)loading('Loading '+s.name,`${complete} / ${entries.length} mesh assets${failed?' · '+failed+' unavailable':''}`);}
+    await Promise.all(Array.from({length:Math.min(batch?2:10,entries.length)},async()=>{
+      while(cursor<entries.length){if(gen!==state.generation)return;const [,instances]=entries[cursor++],id=instances[0].mesh;try{const proxy=s.meshes.find(m=>m.id===id)?.viewProxy,g=await fetchMesh(id,proxy,gen);if(gen!==state.generation)return;const mesh=new THREE.InstancedMesh(g,geometryMaterial,instances.length);const row=appearance?.meshes?.[id];if(validSections(row,g.index.count,g.attributes.position.count)){g.clearGroups();for(const section of row.sections)g.addGroup(section.start,section.count,section.slot);mesh.userData.surfaceMaterials=surfaceSlots(row,appearance?.components?.[instances[0].name]).map(materialFor);}instances.forEach((v,i)=>mesh.setMatrixAt(i,matrix(v.matrix)));mesh.computeBoundingSphere();geometryGroup.add(mesh);}catch(e){failed++;}complete++;if(gen===state.generation)loading('Loading '+s.name,`${complete} / ${entries.length} mesh assets${failed?' · '+failed+' unavailable':''}`);}
     }));
-    if(gen!==state.generation)return;applySurfaceMode();$('loading').classList.add('hidden');geometryGroup.visible=$('show-geometry').checked;$('capture-view').disabled=false;
+    if(gen!==state.generation)return;applySurfaceMode();$('loading').classList.add('hidden');geometryGroup.visible=$('show-geometry').checked;$('capture-view').disabled=false;$('open-batch-capture').disabled=false;
     if(!s.nodes.length)toast('This map has no resolved player portal walls. Check its extraction notes.');
     if(failed)toast(`${failed} mesh assets could not be displayed; the extraction notes remain available.`);
-    const hash=new URLSearchParams(location.hash.slice(1));if(hash.get('map')===mid){state.start=hash.get('from')||'';state.end=hash.get('to')||'';$('start-wall').value=state.start;$('end-wall').value=state.end;findRoute();}
-  } catch(error){if(gen===state.generation){loading('Map could not be loaded',error.message);toast(error.message);}}
+    const hash=new URLSearchParams(location.hash.slice(1));if(!batch&&hash.get('map')===mid){state.start=hash.get('from')||'';state.end=hash.get('to')||'';$('start-wall').value=state.start;$('end-wall').value=state.end;findRoute();}
+    return {scene:s,failedMeshes:failed};
+  } catch(error){if(batch)throw error;if(gen===state.generation){loading('Map could not be loaded',error.message);toast(error.message);}}
 }
 function showSources(){
   let d=$('source-dialog');if(!d){d=document.createElement('dialog');d.id='source-dialog';document.body.append(d);}
@@ -487,7 +491,72 @@ for(const b of document.querySelectorAll('[data-close]'))b.onclick=()=>$(b.datas
 for(const b of document.querySelectorAll('[data-objective]'))b.onclick=()=>{state.objective=b.dataset.objective;document.querySelectorAll('[data-objective]').forEach(x=>x.classList.toggle('active',x===b));findRoute();};
 for(const c of document.querySelectorAll('.edge-filters input'))c.onchange=findRoute;
 $('max-difficulty').oninput=()=>$('difficulty-value').textContent=$('max-difficulty').value;$('max-difficulty').onchange=findRoute;
-window.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName))return;if(e.key.toLowerCase()==='r')fitView();if(e.key==='Escape'){if(state.groupMode){setGroupMode(false,{openPanel:true});return;}if(!$('groups-panel').classList.contains('hidden')){openGroups(false);return;}$('selection-card').classList.add('hidden');state.selected=null;drawEdges();updateWallStyles();}});
+window.addEventListener('keydown',e=>{if(batchRunning)return;if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName))return;if(e.key.toLowerCase()==='r')fitView();if(e.key==='Escape'){if(state.groupMode){setGroupMode(false,{openPanel:true});return;}if(!$('groups-panel').classList.contains('hidden')){openGroups(false);return;}$('selection-card').classList.add('hidden');state.selected=null;drawEdges();updateWallStyles();}});
+const batchLayerIds=['show-geometry','show-portals','show-labels','show-lines','show-edges','cutaway'];
+setupBatchCapture({
+  maps:()=>state.maps,
+  currentMap:()=>state.scene&&$('loading').classList.contains('hidden')?state.scene.id:null,
+  setRunning:active=>{
+    if(active)batchControlState={enabled:controls.enabled,damping:controls.enableDamping};
+    batchRunning=active;
+    if(!active&&batchControlState){controls.enabled=batchControlState.enabled;controls.enableDamping=batchControlState.damping;resize();}
+  },
+  cancelLoad:()=>{state.generation++;},
+  snapshot:()=>({
+    map:state.scene.id,hash:location.hash,position:camera.position.toArray(),up:camera.up.toArray(),target:controls.target.toArray(),far:camera.far,
+    damping:controls.enableDamping,controlsEnabled:controls.enabled,pixelRatio:renderer.getPixelRatio(),cutoffHeight,surfaceMode:$('surface-mode').value,
+    layers:Object.fromEntries(batchLayerIds.map(id=>[id,$(id).checked])),hidden:[...state.hiddenPortals],selected:state.selected,start:state.start,end:state.end,
+    blocked:[...state.blocked],route:state.route,groupSelection:[...state.groupSelection],editingGroup:state.editingGroup,groupMode:state.groupMode,groupName:$('group-name').value,
+    groupsOpen:!$('groups-panel').classList.contains('hidden'),top:$('view-top').classList.contains('active'),wallSearch:$('wall-search').value,
+    gridVisible:grid?.visible,selectionCardVisible:!$('selection-card').classList.contains('hidden')
+  }),
+  load:async(mid,settings)=>{
+    controls.enabled=false;controls.enableDamping=false;controls.update();
+    renderer.setPixelRatio(1);renderer.setSize(settings.width,settings.height,false);camera.aspect=settings.width/settings.height;camera.updateProjectionMatrix();
+    $('show-geometry').checked=true;$('show-portals').checked=true;$('show-labels').checked=false;$('show-lines').checked=false;$('show-edges').checked=false;
+    $('node-labels').classList.add('hidden');
+    const result=await loadScene(mid,{batch:true});
+    if(!result)return null;
+    if(result.failedMeshes)throw new Error(`${result.failedMeshes} mesh assets failed to load; this map was skipped.`);
+    const scene=result.scene;if(!scene.nodes.length)throw new Error('No portal walls to capture.');
+    // Frame full portal apertures rather than just centers, including wall height.
+    const points=scene.nodes.flatMap(node=>{
+      const center=vec(node.position),right=vec(node.right).multiplyScalar(node.width/2),up=vec(node.up).multiplyScalar(node.height/2);
+      return [-1,1].flatMap(x=>[-1,1].map(y=>center.clone().addScaledVector(right,x).addScaledVector(up,y)));
+    });
+    const box=new THREE.Box3().setFromPoints(points);if(grid)grid.visible=false;
+    return {id:scene.id,name:scene.name,revision:scene.revision,wallIds:scene.nodes.map(node=>node.id),box:{min:box.min.toArray(),max:box.max.toArray()},
+      cutoffHeight:$('cutaway').checked?cutoffHeight:null,surfaceMode:$('surface-mode').value,colorCoverage:coveragePercent(appearance),geometryUsable:scene.source.geometryUsable,
+      geometryNotes:scene.issues.length,overviewGeometry:scene.overviewGeometry||null};
+  },
+  capture:async(clue,settings)=>{
+    state.hiddenPortals=new Set(state.scene.nodes.map(node=>node.id).filter(id=>!clue.walls.includes(id)));
+    state.selected=null;state.route=null;setGroupMode(false);applyPortalVisibility(false);updateWallStyles(true);
+    camera.up.set(0,1,0);camera.position.fromArray(clue.camera.position);controls.target.fromArray(clue.camera.target);
+    camera.far=Math.max(5000,clue.camera.distance*4);camera.updateProjectionMatrix();controls.update();
+    // Render after layout/controls settle. captureMapView renders once more before copying.
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    return captureMapView({renderer,world,camera,labels:$('node-labels'),width:settings.width,height:settings.height});
+  },
+  restore:async saved=>{
+    state.generation++;controls.enableDamping=false;
+    for(const [id,checked] of Object.entries(saved.layers))$(id).checked=checked;
+    $('node-labels').classList.toggle('hidden',!saved.layers['show-labels']);
+    renderer.setPixelRatio(saved.pixelRatio);
+    const rect=$('viewport').getBoundingClientRect();renderer.setSize(rect.width,rect.height,false);camera.aspect=rect.width/rect.height;camera.far=saved.far;camera.updateProjectionMatrix();
+    const result=state.scene?.id===saved.map&&$('loading').classList.contains('hidden')?{scene:state.scene}:await loadScene(saved.map,{batch:true});if(!result)throw new Error('Original map did not reload.');
+    state.hiddenPortals=new Set(saved.hidden);state.start=saved.start;state.end=saved.end;state.selected=saved.selected;state.blocked=new Set(saved.blocked);state.route=saved.route;
+    state.groupSelection=new Set(saved.groupSelection);state.editingGroup=saved.editingGroup;$('group-name').value=saved.groupName;$('wall-search').value=saved.wallSearch;
+    $('start-wall').value=saved.start;$('end-wall').value=saved.end;$('surface-mode').value=saved.surfaceMode;applySurfaceMode();setCutoffHeight(saved.cutoffHeight);
+    if(grid)grid.visible=saved.gridVisible;
+    camera.position.fromArray(saved.position);camera.up.fromArray(saved.up);controls.target.fromArray(saved.target);controls.update();
+    $('view-top').classList.toggle('active',saved.top);$('view-orbit').classList.toggle('active',!saved.top);
+    setGroupMode(saved.groupMode);openGroups(saved.groupsOpen);refreshGroupSelection();applyPortalVisibility(false);renderResult();
+    if(saved.selected&&saved.selectionCardVisible){selectWall(saved.selected);state.start=saved.start;$('start-wall').value=saved.start;}
+    else $('selection-card').classList.add('hidden');
+    controls.enableDamping=saved.damping;controls.enabled=saved.controlsEnabled;history.replaceState(null,'',saved.hash||'#'+new URLSearchParams({map:saved.map}));
+  }
+});
 function animate(){
   requestAnimationFrame(animate);controls.update();renderer.render(world,camera);
   const width=renderer.domElement.clientWidth,height=renderer.domElement.clientHeight;

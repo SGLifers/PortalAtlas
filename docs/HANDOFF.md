@@ -613,3 +613,51 @@ python -m server before SIGTERM; relaunched ./run.sh in exec session46138, curre
 PID43818 onlocalhost8741, updated .local/server.pid after identity checks. No
 imports, source/game changes, clue publications or Discord operations. Commit
 Atlas locally only, independently of Portle's GitHub update.
+
+## Batch clue capture — implementation milestone, 2026-11-09
+
+User explicitly requested implementing the batch tool after the feasibility
+assessment. Added Batch clues dialog: all25 imported standalone maps, current
+map, or checked subset; six progressive1–N or disjoint groups; random view per
+clue or one view per map; output1280x800/1600x1000/1920x1080; repeatable seed and
+New seed; progress, cancellation, ZIP download and error report. PNGs/manifest
+stay local in browser memory until download; nothing publishes into Portle.
+
+web/batch-capture.js provides separate seeded group/camera streams per map,
+full-aperture bounding-sphere/frustum camera placement at35–65degree elevations,
+and a stored-entry ZIP writer with CRC32 and384MiB cap. PNGs are already compressed.
+Manifest records source/map revision, group IDs, six camera poses, visibility,
+saved cutoff, color coverage and errors. Groups/images do not replace saved
+manual/random groups. Sequential maps use two mesh loaders. Invalid/missing mesh
+loads skip the map; unfinished maps are discarded on cancellation while completed
+maps remain in the ZIP. Frame capture hides labels/lines/grid/editing highlights,
+forces geometry/portals visible and uses explicit output resolution.
+
+web/batch-ui.js orchestrates the modal/run; app.js adapter snapshots/restores
+original map, camera, render dimensions/pixel ratio, layer flags, cutoff/surfaces,
+portal visibility, route and selection/group UI. loadScene has batch error returns,
+no batch hash/route restoration, and early exits for cancelled mesh workers.
+Keyboard camera shortcuts and ordinary map changes are blocked during the modal
+run. Existing map source files and all localStorage settings remain unchanged.
+Current-map restoration can reuse already-loaded geometry to avoid another load.
+
+Validation at this milestone:17 Node tests passed, including deterministic seeds,
+map-order independence, nested/disjoint membership, fixed camera, all portal-box
+corners fitting portrait/landscape frusta and ZIP header/CRC/path/size checks.
+Python zipfile independently validated ZIP output. Existing54 Python tests passed
+in2.836s. Browser2/tab11 captured six real Dought PNGs,1280x800, all different,
+without embedded metadata. Actual downloaded ZIP is in the user's Downloads as
+portal-atlas-clues-portle-batch-qa-2026-11-09.zip; its CRC/integrity and manifest
+passed Python validation.447 walls group75/75/75/74/74/74; cumulative75/150/225/
+299/373/447. No errors. Before/after DOM checks showed identical original map,
+portal visibility, labels/lines, cutoff and canvas dimensions. Unmodified PNG
+copies for inspection: .local/batch-qa-dought-01.png and -06.png. Browser's download
+event API timed out, but the normal UI link did save the exact named file into
+Downloads, which was read as a task output artifact (no browser profile access).
+
+Pending final QA: current code was reloaded after accessible labels and same-map
+restore optimization. Test cancellation, selected-map mode and an all-map run;
+inspect outputs and save final UI proof, then document results and commit final
+milestone. Atlas listener remains owned PID43818/session46138 at127.0.0.1:8741;
+no restart required for these static frontend changes. No asset import workers,
+Portle/Discord/hosting changes or public uploads. Keep proprietary outputs ignored.

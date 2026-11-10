@@ -155,6 +155,34 @@ reload. A partition that no longer matches the map's walls must be regenerated.
 These controls change visibility only; they do not alter route graphs, extracted
 assets or upload/publish Portle clues.
 
+## Batch screenshot capture
+
+Open **Batch clues** in the viewer. Capture all imported standalone arenas, the
+current arena, or a checked subset. Each map produces six PNGs and a manifest in
+one downloadable ZIP. No images are uploaded or published to Portle.
+
+Choose a resolution (1280×800, 1600×1000 or 1920×1080), random camera angles per
+clue or one random angle per map, and progressive groups1–N or one disjoint group
+per clue. **New seed** makes another distribution. Reusing the seed, map data and
+settings reproduces the portal groups and camera poses. The batch creates its own
+balanced groups without replacing browser-saved groups.
+
+Captures hide labels, route lines, the grid and editing highlights. Surface mode
+and each map's saved cutoff height are respected. Camera positions stay above the
+map and frame its full portal apertures. Architecture may still hide walls, so
+review the images before uploading them into the local Portle editor. This is an
+asset-color/proxy preview, with the same fidelity limits as the normal viewer.
+
+Keep the tab open while capturing. Maps load sequentially with two mesh loaders.
+Progress and Cancel remain available; cancellation discards an unfinished map
+and keeps completed maps in the ZIP. Failed map loads are skipped and listed in
+both the report and manifest. The original map, camera, render resolution, layer
+settings and portal visibility are restored when the run finishes or is cancelled.
+The archive has a384MiB memory limit; choose smaller batches if it is reached.
+The manifest records map IDs/names, revisions, portal groups, camera poses,
+cutaway/color settings and any errors. Its folders identify answers for author
+review; PNGs have generic clue filenames. Treat the archive as private clue data.
+
 ## Verify
 
 ```bash

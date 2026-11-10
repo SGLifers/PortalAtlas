@@ -1,10 +1,10 @@
 // Capture only the map viewport. The WebGL frame must be copied synchronously
 // after rendering, before the browser clears its non-preserved drawing buffer.
-export function captureMapView({renderer,world,camera,labels}){
+export function captureMapView({renderer,world,camera,labels,width,height}){
   const source=renderer.domElement,rect=source.getBoundingClientRect();
   if(!source.width||!source.height||!rect.width||!rect.height)throw new Error('The map view is not ready.');
   if(renderer.getContext().isContextLost())throw new Error('The graphics context was lost. Reload the map and try again.');
-  const image=document.createElement('canvas');image.width=source.width;image.height=source.height;
+  const image=document.createElement('canvas');image.width=width||source.width;image.height=height||source.height;
   const ctx=image.getContext('2d');if(!ctx)throw new Error('PNG capture is unavailable in this browser.');
   ctx.scale(image.width/rect.width,image.height/rect.height);
   // Match .viewport-section's radial background; the WebGL canvas is transparent.
