@@ -16,6 +16,11 @@ from .routing import route
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 DATA=ROOT/'data';WEB=ROOT/'web'
 JOBS={};JOB_LOCK=threading.Lock();SCENES={}
+DISPLAY_NAMES={'MAP_Erosion':'Dought'}
+
+
+def map_name(mid):
+    return DISPLAY_NAMES.get(mid,mid.removeprefix('MAP_').replace('_',' '))
 
 
 def features():
@@ -30,14 +35,15 @@ def scene(mid):
     if not p.exists():raise ValueError('Import this map first')
     stamp=p.stat().st_mtime_ns
     if mid not in SCENES or SCENES[mid][0]!=stamp:SCENES[mid]=(stamp,json.loads(p.read_text()))
-    return SCENES[mid][1]
+    # Presentation names must not rewrite extracted assets or their revisions.
+    return dict(SCENES[mid][1],name=map_name(mid))
 
 
 def map_list():
     rows=[]
     for mid in features():
         ready=(DATA/'scenes'/(mid+'.json')).exists()
-        row={'id':mid,'name':mid.removeprefix('MAP_').replace('_',' '),'ready':ready}
+        row={'id':mid,'name':map_name(mid),'ready':ready}
         if ready:
             s=scene(mid);row.update(nodes=len(s['nodes']),edges=len(s['edges']),revision=s['revision'],issues=len(s['issues']),library='/Sublevels/' in s['rootPackage'],geometryUsable=s['source'].get('geometryUsable',False))
         if mid in JOBS:row['job']=dict(JOBS[mid])

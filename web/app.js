@@ -336,7 +336,7 @@ renderer.domElement.addEventListener('pointerup',event=>{
 });
 function renderMaps(){
   const query=$('map-search').value.toLowerCase();const ready=state.maps.filter(m=>m.ready&&!m.library);$('map-count').textContent=ready.length;
-  $('map-list').innerHTML=ready.filter(m=>m.name.toLowerCase().includes(query)).map(m=>`<button class="map-row ${m.id===state.scene?.id?'active':''}" data-map="${m.id}"><span class="map-glyph">${m.name==='Academy'?'⌘':m.name==='Abyss'?'◇':'⌁'}</span><span class="map-name">${esc(m.name)}<small>${m.nodes} WALLS · ${m.edges} EDGES</small></span><span class="map-arrow">›</span></button>`).join('') || '<p class="intro">No matching extracted arenas.</p>';
+  $('map-list').innerHTML=ready.filter(m=>[m.name,m.id].some(name=>name.toLowerCase().includes(query))).map(m=>`<button class="map-row ${m.id===state.scene?.id?'active':''}" data-map="${m.id}"><span class="map-glyph">${m.name==='Academy'?'⌘':m.name==='Abyss'?'◇':'⌁'}</span><span class="map-name">${esc(m.name)}<small>${m.nodes} WALLS · ${m.edges} EDGES</small></span><span class="map-arrow">›</span></button>`).join('') || '<p class="intro">No matching extracted arenas.</p>';
   $('map-list').querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>loadScene(b.dataset.map));
   renderImports();
 }
@@ -472,7 +472,7 @@ $('reset-view').onclick=()=>fitView();$('view-top').onclick=()=>fitView('top');$
 $('capture-view').onclick=async()=>{
   if(!state.scene||!$('loading').classList.contains('hidden'))return;
   const button=$('capture-view');button.disabled=true;button.setAttribute('aria-busy','true');
-  const filename=screenshotFilename(state.scene.id,$('view-top').classList.contains('active')?'top':'3d');
+  const filename=screenshotFilename(state.scene.name,$('view-top').classList.contains('active')?'top':'3d');
   try{
     let capture;
     try{updateWallStyles(true);capture=captureMapView({renderer,world,camera,labels:$('node-labels')});}

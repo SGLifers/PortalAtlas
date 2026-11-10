@@ -576,3 +576,40 @@ New random groups and current visibility remain saved for Terra13 and Academy.
 No imports are running. Old browser error tabs, Portle editor/bot/hosting, game
 installation and SplitgateHost were untouched. Commit this milestone locally;
 Atlas remains independent from the Portle GitHub repository and is not published.
+
+## Dought display name and batch capture feasibility — 2026-11-09
+
+User asked whether every map can be captured programmatically from random camera
+angles, and requested renaming Erosion to Dought (spelling as explicitly given).
+Checked existing fitView, bounds, loadScene and captureMapView paths: sequential
+batch capture is feasible by loading each ready scene, waiting until geometry
+finishes, choosing bounded azimuth/elevation/distance around its wall bounds and
+capturing the real renderer. Six random portal groups can provide nested clues.
+A future tool should allow repeatable seeds, constrain framing, hide labels/routes,
+write separate reviewable PNGs and avoid automatically publishing Portle clues.
+Random angles cannot guarantee unobstructed/interesting views. No batch capture
+runner or random-angle control was implemented; this part was a feasibility
+question. Existing manual screenshot workflow remains available.
+
+Implemented server presentation override MAP_Erosion→Dought for arena listings
+and scene responses, without modifying raw scene files, root packages, IDs or
+revisions. Existing map search accepts both displayed name and internal ID, so
+searching Erosion still finds Dought. Screenshot filenames now use scene.name,
+so new captures use Dought. Stable IDs preserve saved groups, visibility, route
+references and appearance sidecars. Portle's independent repo also updates its
+answer roster and future legacy imports, retaining Erosion as a guess alias.
+Historical frozen Portle snapshot names are not rewritten.
+
+Validation:54 Python tests passed in2.708s;13 Node tests passed; web/app.js syntax
+and whitespace checks passed. Live /api/maps and /api/maps/MAP_Erosion both show
+Dought, retaining identical scene revision/nodes/edges. Raw scene SHA256 remained
+bdbc95f6ef0259e9b71e6f883844d59c5d5f969036339fae532394242fbd41cf.
+Browser2/tab11: Dought search found447walls/1808edges; clicked map, verified title,
+completed render and enabled Screenshot; color coverage10.1%, no console errors.
+Native proof .local/dought-map-name.png; tab11 left on Dought and marked deliverable.
+
+API code required restarting the owned Atlas listener. Verified PID30047/cwd and
+python -m server before SIGTERM; relaunched ./run.sh in exec session46138, current
+PID43818 onlocalhost8741, updated .local/server.pid after identity checks. No
+imports, source/game changes, clue publications or Discord operations. Commit
+Atlas locally only, independently of Portle's GitHub update.
