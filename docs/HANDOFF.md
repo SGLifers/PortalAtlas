@@ -698,3 +698,31 @@ apertures but cannot guarantee attractive or unobstructed clue views. Current
 cutoff/surface settings are used; saved manual groups are preserved. Archive
 limit384MiB; smaller subsets/resolutions are available if reached. Commit final
 verification locally only; this Atlas repo has no remote and is not published.
+
+## Portal-only batch regeneration — 2026-11-09
+
+User requested regenerated clues with geometry off, portals on, labels/lines/all
+angles/cutaway off, plus a data folder for the hosted Portle bot. Added explicit
+Include geometry and Enable cutaway checkboxes to Batch clues, both default off.
+Other clue layers remain fixed as requested. The selected settings are applied
+before each map loads and recorded in top-level settings.layers and every map's
+layers. Saved viewer settings are restored afterward. README reflects defaults.
+
+Browser2/tab11 completed all25 maps/150 PNGs with seed
+portle-portals-only-2026-11-09,1280x800, progressive groups/random angle per clue.
+Normal Download ZIP saved the raw batch in Downloads as
+portal-atlas-clues-portle-portals-only-2026-11-09.zip. Manifest confirms requested
+flags, cutoffHeight null, no errors/cancellation. A decoded Academy clue6 sample
+shows only portal apertures on the viewer background: ignored
+.local/portals-only-academy-06.png. Completion proof:
+.local/batch-portals-only-complete.png. Source SHA256 baseline matches all25 scenes.
+Latest JS syntax and all4 batch-specific Node tests passed; diff check passed.
+
+Portle packaging runs separately via ignored .local/package-portal-batch.py in
+the Portle repo. It converts real captured PNGs through ClueLibrary into an
+isolated data/clues folder, publishing the23 supported answer sets; Training and
+HangmanR3 are excluded by the bot roster. It preserves old local images for frozen
+rounds, never opens live scores or .env, and does not modify the source library.
+See Portle handoff for final archive validation/output path. No upload or live bot
+operation is part of this request. Atlas stays running at127.0.0.1:8741; no restart
+was needed. Keep all proprietary output artifacts ignored/outside Git.

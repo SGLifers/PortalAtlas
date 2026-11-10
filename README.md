@@ -167,8 +167,10 @@ per clue. **New seed** makes another distribution. Reusing the seed, map data an
 settings reproduces the portal groups and camera poses. The batch creates its own
 balanced groups without replacing browser-saved groups.
 
-Captures hide labels, route lines, the grid and editing highlights. Surface mode
-and each map's saved cutoff height are respected. Camera positions stay above the
+Captures show portals and hide labels, route lines, all angles, the grid and editing
+highlights. Geometry and cutaway default to off; enable either in the batch dialog
+if desired. Surface mode and each map's saved cutoff height (when cutaway is enabled)
+are respected. Camera positions stay above the
 map and frame its full portal apertures. Architecture may still hide walls, so
 review the images before uploading them into the local Portle editor. This is an
 asset-color/proxy preview, with the same fidelity limits as the normal viewer.

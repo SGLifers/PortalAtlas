@@ -513,7 +513,7 @@ setupBatchCapture({
   load:async(mid,settings)=>{
     controls.enabled=false;controls.enableDamping=false;controls.update();
     renderer.setPixelRatio(1);renderer.setSize(settings.width,settings.height,false);camera.aspect=settings.width/settings.height;camera.updateProjectionMatrix();
-    $('show-geometry').checked=true;$('show-portals').checked=true;$('show-labels').checked=false;$('show-lines').checked=false;$('show-edges').checked=false;
+    $('show-geometry').checked=settings.layers.geometry;$('show-portals').checked=true;$('show-labels').checked=false;$('show-lines').checked=false;$('show-edges').checked=false;$('cutaway').checked=settings.layers.cutaway;
     $('node-labels').classList.add('hidden');
     const result=await loadScene(mid,{batch:true});
     if(!result)return null;
@@ -526,7 +526,7 @@ setupBatchCapture({
     });
     const box=new THREE.Box3().setFromPoints(points);if(grid)grid.visible=false;
     return {id:scene.id,name:scene.name,revision:scene.revision,wallIds:scene.nodes.map(node=>node.id),box:{min:box.min.toArray(),max:box.max.toArray()},
-      cutoffHeight:$('cutaway').checked?cutoffHeight:null,surfaceMode:$('surface-mode').value,colorCoverage:coveragePercent(appearance),geometryUsable:scene.source.geometryUsable,
+      layers:{...settings.layers},cutoffHeight:$('cutaway').checked?cutoffHeight:null,surfaceMode:$('surface-mode').value,colorCoverage:coveragePercent(appearance),geometryUsable:scene.source.geometryUsable,
       geometryNotes:scene.issues.length,overviewGeometry:scene.overviewGeometry||null};
   },
   capture:async(clue,settings)=>{

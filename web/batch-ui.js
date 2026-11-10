@@ -33,7 +33,8 @@ export function setupBatchCapture(adapter){
     if(!maps.length)return;
     if(!seed){$('batch-status').textContent='Enter a seed or choose New seed.';return;}
     const [width,height]=$('batch-size').value.split('x').map(Number);
-    const settings={width,height,seed,fixedCamera:$('batch-camera').value==='per-map',cumulative:$('batch-reveal').value==='cumulative'};
+    const settings={width,height,seed,fixedCamera:$('batch-camera').value==='per-map',cumulative:$('batch-reveal').value==='cumulative',
+      layers:{geometry:$('batch-geometry').checked,portals:true,labels:false,lines:false,allAngles:false,cutaway:$('batch-cutaway').checked}};
     const saved=adapter.snapshot(),zip=new CaptureZip();
     const manifest={format:'portal-atlas-clue-batch',version:1,created:new Date().toISOString(),settings,maps:[],errors:[],cancelled:false};
     running=true;cancelled=false;adapter.setRunning(true);

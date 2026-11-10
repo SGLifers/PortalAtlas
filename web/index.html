@@ -92,8 +92,12 @@
       <label>Camera<select id="batch-camera" aria-label="Camera"><option value="per-clue">Random angle for each clue</option><option value="per-map">One random angle per map</option></select></label>
       <label>Portal groups<select id="batch-reveal" aria-label="Portal groups"><option value="cumulative">Progressive: groups 1–N</option><option value="single">One disjoint group per clue</option></select></label>
     </div>
+    <div class="batch-fields">
+      <label><input id="batch-geometry" type="checkbox"> Include geometry</label>
+      <label><input id="batch-cutaway" type="checkbox"> Enable cutaway</label>
+    </div>
     <label class="batch-seed-label" for="batch-seed">Random seed</label><div class="batch-seed"><input id="batch-seed" maxlength="120" autocomplete="off"><button id="batch-new-seed" class="secondary" type="button">New seed</button></div>
-    <p class="batch-note">The same seed, map data and settings reproduce the groups and angles. Saved groups and visibility are preserved. Cutaway heights and surface mode use your map settings.</p>
+    <p class="batch-note">Portals are on; labels, lines and all angles are off. Geometry and cutaway are off by default. The same seed, map data and settings reproduce the groups and angles. Saved groups and visibility are preserved. Enabled cutaway heights and surface mode use your map settings.</p>
     <div id="batch-map-options" class="batch-map-options hidden" aria-label="Arenas to capture"></div>
     <strong id="batch-summary"></strong>
   </fieldset>
