@@ -24,6 +24,31 @@ export function groupVisibility(wallIds, hidden, members, action) {
   return result;
 }
 
+// Shuffle the entire map before partitioning. Remainders go to the first groups,
+// so every wall occurs once and group sizes differ by at most one.
+export function randomClueGroups(wallIds, random=Math.random) {
+  const shuffled=[...new Set(wallIds)];
+  for(let i=shuffled.length-1;i>0;i--){
+    const j=Math.floor(random()*(i+1));
+    [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];
+  }
+  const size=Math.floor(shuffled.length/6),remainder=shuffled.length%6;
+  let offset=0;
+  return Array.from({length:6},(_,index)=>{
+    const count=size+(index<remainder?1:0),group=shuffled.slice(offset,offset+count);
+    offset+=count;return group;
+  });
+}
+
+// A saved partition is usable only if it still covers this map exactly once.
+// Reject the whole set instead of silently keeping missing/overlapping groups.
+export function normalizeClueGroups(value, wallIds) {
+  if(!Array.isArray(value)||value.length!==6||value.some(group=>!Array.isArray(group)))return [];
+  const valid=new Set(wallIds),members=value.flat(),sizes=value.map(group=>group.length);
+  if(members.length!==valid.size||new Set(members).size!==valid.size||members.some(id=>!valid.has(id))||Math.max(...sizes)-Math.min(...sizes)>1)return [];
+  return value.map(group=>[...group]);
+}
+
 // Coordinates are viewport pixels. A drag in either direction selects visible
 // wall centers; offscreen and behind-camera points are excluded by the caller.
 export function wallsInBox(points, start, end) {

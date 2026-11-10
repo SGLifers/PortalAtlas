@@ -2,13 +2,14 @@ import * as THREE from 'three';
 import { OrbitControls } from './vendor/OrbitControls.js';
 import { linearColor,coveragePercent,validSections,surfaceSlots } from './colors.js';
 import { captureMapView,screenshotFilename,downloadScreenshot } from './screenshot.js';
-import { normalizeGroups,groupVisibility,wallsInBox } from './portal-groups.js';
+import { normalizeGroups,groupVisibility,wallsInBox,randomClueGroups,normalizeClueGroups } from './portal-groups.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const state = { maps:[], scene:null, selected:null, start:'',end:'', objective:'fastest', blocked:new Set(),route:null, generation:0,routeGeneration:0 };
 state.hiddenPortals=new Set();
 state.groupSelection=new Set();state.wallGroups=[];state.editingGroup=null;state.groupMode=false;
+state.clueGroups=[];
 let toastTimer;
 function toast(text) { $('toast').textContent=text;$('toast').classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.add('hidden'),4300); }
 async function api(path, payload) {
@@ -71,6 +72,23 @@ function saveGroups(groups){
   try{localStorage.setItem('portal-atlas-wall-groups',JSON.stringify(saved));state.wallGroups=groups;return true;}
   catch{toast('Browser storage is unavailable. Groups could not be saved.');return false;}
 }
+function readClueGroupStore(){
+  try{const value=JSON.parse(localStorage.getItem('portal-atlas-clue-groups')||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch{return {};}
+}
+function renderClueGroups(){
+  const total=state.scene?.nodes.length||0,groups=state.clueGroups,shown=state.scene?.nodes.filter(n=>portalVisible(n.id)).length||0;
+  $('randomize-clue-groups').disabled=!total;
+  $('randomize-clue-groups').textContent=groups.length?'Reshuffle 6 groups':'Create 6 random groups';
+  $('clue-groups-status').textContent=groups.length?`${total} walls assigned once · ${groups.map(group=>group.length).join(' / ')} · saved in this browser`:total?`${total} walls, including hidden walls. Preview starts with group 1.`:'Choose a map with portal walls.';
+  $('clue-groups-list').innerHTML=groups.map((group,index)=>{
+    const prefix=groups.slice(0,index+1).flat(),only=group.length>0&&shown===group.length&&group.every(portalVisible),through=prefix.length>0&&shown===prefix.length&&prefix.every(portalVisible);
+    return `<div class="clue-group"><div class="groups-heading"><strong>Group ${index+1}</strong><small>${group.length} walls · ${group.filter(portalVisible).length} shown</small></div><div class="group-actions"><button type="button" class="secondary" data-clue-only="${index}" aria-label="Show only random group ${index+1}" aria-pressed="${only}" ${group.length?'':'disabled'}>Only this</button><button type="button" class="secondary" data-clue-through="${index}" aria-label="Show random groups 1 through ${index+1}" aria-pressed="${through}" ${prefix.length?'':'disabled'}>Through here · ${prefix.length}</button></div></div>`;
+  }).join('');
+  for(const mode of ['only','through'])$('clue-groups-list').querySelectorAll(`[data-clue-${mode}]`).forEach(button=>button.onclick=()=>{
+    const index=Number(button.getAttribute(`data-clue-${mode}`)),members=mode==='only'?state.clueGroups[index]:state.clueGroups.slice(0,index+1).flat();
+    setGroupMode(false);applyGroupVisibility(members,'only');
+  });
+}
 function openGroups(open=true){$('groups-panel').classList.toggle('hidden',!open);$('toggle-groups').setAttribute('aria-expanded',String(open));}
 function refreshGroupSelection(){
   const count=state.groupSelection.size;
@@ -84,7 +102,8 @@ function refreshGroupSelection(){
   updateWallStyles();renderWallList();renderWallGroups();
 }
 function renderWallGroups(){
-  $('group-count').textContent=state.wallGroups.length;
+  $('group-count').textContent=state.wallGroups.length+state.clueGroups.length;
+  renderClueGroups();
   $('wall-groups-list').innerHTML=state.wallGroups.map(group=>{
     const shown=group.walls.filter(portalVisible).length;
     return `<div class="wall-group ${group.id===state.editingGroup?'editing':''}"><div class="wall-group-heading"><button type="button" class="group-load" data-group-load="${esc(group.id)}" aria-label="Select group ${esc(group.name)}"><strong>${esc(group.name)}</strong><small>${group.walls.length} walls · ${shown} shown</small></button><button type="button" class="group-link group-delete" data-group-delete="${esc(group.id)}" aria-label="Delete group ${esc(group.name)}">×</button></div><div class="group-actions"><button type="button" class="secondary" data-group-show="${esc(group.id)}" aria-label="Show group ${esc(group.name)}">Show</button><button type="button" class="secondary" data-group-hide="${esc(group.id)}" aria-label="Hide group ${esc(group.name)}">Hide</button><button type="button" class="secondary" data-group-only="${esc(group.id)}" aria-label="Show only group ${esc(group.name)}">Only these</button></div></div>`;
@@ -327,6 +346,7 @@ async function loadScene(mid) {
     const s=await api('/api/maps/'+mid);if(gen!==state.generation)return;
     state.scene=s;state.start='';state.end='';state.selected=null;state.blocked.clear();state.route=null;$('wall-search').value='';document.querySelector('.right-panel').scrollTop=0;
     const hidden=readHiddenPortals()[mid];state.hiddenPortals=new Set(Array.isArray(hidden)?hidden.filter(id=>s.nodes.some(n=>n.id===id)):[]);
+    state.clueGroups=normalizeClueGroups(readClueGroupStore()[mid],s.nodes.map(n=>n.id));
     setGroupMode(false);state.groupSelection.clear();state.editingGroup=null;state.wallGroups=normalizeGroups(readGroupStore()[mid],s.nodes.map(n=>n.id));$('group-name').value='';refreshGroupSelection();
     if(new URLSearchParams(location.hash.slice(1)).get('map')!==mid)history.replaceState(null,'','#'+new URLSearchParams({map:mid}));
     for(const g of [geometryGroup,wallGroup,edgeGroup,routeGroup])disposeGroup(g);
@@ -414,6 +434,14 @@ $('capture-show-all').onclick=()=>setPortalVisibility('all');$('capture-hide-all
 $('capture-portal-list').onchange=()=>{const shown=new Set([...$('capture-portal-list').selectedOptions].map(option=>option.value));state.hiddenPortals=new Set(state.scene.nodes.filter(n=>!shown.has(n.id)).map(n=>n.id));$('show-portals').checked=true;applyPortalVisibility(true);renderWallList();};
 $('toggle-groups').onclick=()=>openGroups($('groups-panel').classList.contains('hidden'));
 $('close-groups').onclick=()=>openGroups(false);
+$('randomize-clue-groups').onclick=()=>{
+  if(!state.scene?.nodes.length)return;
+  const groups=randomClueGroups(state.scene.nodes.map(n=>n.id)),saved=readClueGroupStore();saved[state.scene.id]=groups;
+  try{localStorage.setItem('portal-atlas-clue-groups',JSON.stringify(saved));}
+  catch{toast('Browser storage is unavailable. Random groups could not be saved.');return;}
+  state.clueGroups=groups;setGroupMode(false);applyGroupVisibility(groups[0],'only');
+  toast('Six balanced groups saved. Showing group 1; choose a group or build up the clues.');
+};
 $('select-group-walls').onclick=()=>{if(state.scene){setGroupMode(true);refreshGroupSelection();}};
 $('selection-open-groups').onclick=()=>openGroups();
 $('finish-group-selection').onclick=()=>setGroupMode(false,{openPanel:true});

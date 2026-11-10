@@ -138,12 +138,29 @@ available. Active mode modifiers, gravity/jump behavior, aiming time, and human
 difficulty remain qualified estimates. These are planning candidates and training
 references, not measured speedrun records or guaranteed executable inputs.
 
+## Random Portle clue groups
+
+Open **Wall groups → Create 6 random groups** to shuffle every portal wall on the
+current map into six disjoint groups, including currently hidden walls. Each wall
+belongs to exactly one random group. Sizes are equal when the count divides by
+six, otherwise they differ by at most one. Maps with fewer than six walls have
+empty groups. Existing manually saved wall selections stay intact.
+
+Use **Reshuffle 6 groups** until you like the distribution. Creation/reshuffling
+previews group1. **Only this** isolates one group; **Through here** shows groups
+1 through that row, so six captures can progressively reveal the entire map.
+Use **Screenshot** after each visibility choice; the camera and cutaway stay put.
+Random groups are remembered separately for each map in this browser and survive
+reload. A partition that no longer matches the map's walls must be regenerated.
+These controls change visibility only; they do not alter route graphs, extracted
+assets or upload/publish Portle clues.
+
 ## Verify
 
 ```bash
 .venv/bin/python -m unittest discover -s tests -v
 .venv/bin/python tools/audit_maps.py
-node --test tests/colors.test.mjs
+node --test tests/*.test.mjs
 ```
 
 Tests cover geometry intersections/transforms, face continuity, launch arrival

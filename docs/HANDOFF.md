@@ -522,3 +522,57 @@ or Discord bot changes were made. Old error tabs were untouched. Native UI proof
 saved under ignored .local/relaunch-atlas.png and Portle/.local/relaunch-editor.png.
 No code changes/tests required for this operational relaunch. Both servers remain
 running for the user; editor URL is http://127.0.0.1:8742/manage.
+
+## Balanced random portal groups for Portle — 2026-11-09
+
+User requested six random equally sized groups, refreshable when the distribution
+is undesirable, with each portal in exactly one group. Added Random Portle groups
+at the top of the existing Wall groups panel. Create 6 random groups / Reshuffle
+6 groups shuffles all current scene.nodes IDs (including hidden walls), then
+partitions them into six disjoint arrays. Counts are exactly equal when divisible
+by6; otherwise sizes differ by at most1, with remainder walls in the first groups.
+Fewer than6 walls yields empty trailing groups, with empty isolate buttons disabled.
+Generation immediately shows group1. Only this isolates a group; Through here
+isolates groups1–N, allowing progressively more portals in the six screenshots.
+These visibility choices preserve camera/cutaway, routes and underlying assets.
+
+Random partitions have their own map-scoped localStorage key,
+portal-atlas-clue-groups, separate from manual portal-atlas-wall-groups. Creation
+and reshuffle replace only that arena's random partition. Existing manual named
+selections can overlap and remain unchanged; random groups cannot overlap. A
+strict saved-partition validator rejects corrupt data, changed/missing/foreign
+wall IDs, duplicate membership and unbalanced sizes, so a stale set must be
+regenerated. Storage failure keeps the previous set and gives an error toast.
+The Wall groups badge counts manual plus random groups. UI shows group sizes and
+currently visible wall counts, with active visibility buttons. README and in-app
+help explain the capture workflow and remainder behavior. No Portle changes,
+automatic screenshots/uploads, asset extraction or graph modifications.
+
+Validation:
+- Node --test tests/*.test.mjs passed13 tests (four new partition/reshuffle/storage/
+  cumulative-visibility tests). Deterministic checks cover counts0–401, every
+  remainder, no duplicates/omissions, source immutability, stale saved groups and
+  progressively nested visibility. Existing manual group and color tests pass.
+- OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 .venv/bin/python -m unittest discover
+  -s tests -q passed54 tests in5.249s. The MAP_Test stale-revision output is the
+  expected negative audit fixture; the suite endedOK.
+- Node --check web/app.js and web/portal-groups.js; git diff --check passed.
+- Browser2 fresh tab11 /#map=MAP_Terra13:112 walls split19/19/19/19/18/18.
+  Clicked Only this on all six groups and read actual wall visibility checkboxes:
+  total112, unique112. Through here3 showed57/112; through6 showed112/112.
+  Reshuffle changed group1, preserved all coverage counts, and reload retained
+  identical membership. Map switching to Academy showed no Terra groups. Generated
+  Academy12/12/12/11/11/11 while its existing manual Clue1 example stayed10walls.
+  Returning to Terra restored its previous partition. Final reload also passed.
+- Default1280px viewport had no horizontal overflow; panel remains276px wide and
+  scrolls to later groups/manual controls. No viewport overrides were applied.
+  No browser console errors/warnings. Screenshot .local/random-portle-groups.png
+  shows the final Terra13 panel/group1; tab11 marked deliverable.
+
+Atlas was not listening before QA. Started ./run.sh, owned PID30047 / exec
+session96060, on127.0.0.1:8741 and updated .local/server.pid after identity checks.
+Leave it running for capture; verify process identity before any future signal.
+New random groups and current visibility remain saved for Terra13 and Academy.
+No imports are running. Old browser error tabs, Portle editor/bot/hosting, game
+installation and SplitgateHost were untouched. Commit this milestone locally;
+Atlas remains independent from the Portle GitHub repository and is not published.
