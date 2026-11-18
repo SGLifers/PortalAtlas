@@ -13,6 +13,7 @@ ROOT=pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from server.geometry import InstanceBVH, transform, vector, points
 from tools.collision import simple_collision,collision_policy,box
+from server.map_variants import feature_root
 import numpy as np
 
 
@@ -34,7 +35,10 @@ def source_package(array):
     return world.get('Package') if world else None
 
 
-def compile_scene(feature, extracted, output, selected_root=None):
+def compile_scene(feature, extracted, output, selected_root=None, scene_id=None):
+    scene_id=scene_id or feature
+    if not re.fullmatch(r'MAP_[A-Za-z0-9_]+',scene_id):raise ValueError('Invalid scene ID')
+    if scene_id!=feature and feature_root(scene_id)!=(feature,selected_root):raise ValueError('Scene ID does not match the selected feature/root')
     started=time.monotonic();manifest=json.loads((extracted/(feature+'.json')).read_text())
     movement_path=ROOT/'data/movement-model.json'
     movement=json.loads(movement_path.read_text()) if movement_path.exists() else {}
@@ -233,7 +237,7 @@ def compile_scene(feature, extracted, output, selected_root=None):
                 f.write(np.array([len(verts),idx.size],dtype='<u4').tobytes());f.write((verts*100).astype('<f4').tobytes());f.write(idx.astype('<u4').tobytes())
             row['viewProxy']=True
         mesh_rows.append(row)
-    scene={'id':feature,'modelVersion':5,'name':feature.removeprefix('MAP_').replace('_',' '),'rootPackage':root,
+    scene={'id':scene_id,'modelVersion':5,'name':scene_id.removeprefix('MAP_').replace('_',' '),'rootPackage':root,
            'nodes':nodes,'edges':edges,'instances':geometry,
            'meshes':mesh_rows,'overviewGeometry':'collision hulls with render fallback' if overview else 'render meshes',
            'bounds':{'min':bounds_lo.tolist(),'max':bounds_hi.tolist()},
@@ -248,12 +252,13 @@ def compile_scene(feature, extracted, output, selected_root=None):
            'issues':issues,'generatedSeconds':round(time.monotonic()-started,2)}
     from tools.finalize_scene import finalize
     scene=finalize(scene,manifest,extracted)
+    if scene_id!=feature:scene['source']['feature']=feature
     scene['revision']=hashlib.sha256(json.dumps(scene,sort_keys=True).encode()).hexdigest()[:16]
-    output.mkdir(parents=True,exist_ok=True);temp=output/(feature+'.json.tmp');temp.write_text(json.dumps(scene,separators=(',',':'),allow_nan=False));temp.replace(output/(feature+'.json'))
+    output.mkdir(parents=True,exist_ok=True);temp=output/(scene_id+'.json.tmp');temp.write_text(json.dumps(scene,separators=(',',':'),allow_nan=False));temp.replace(output/(scene_id+'.json'))
     print('DONE',feature,'edges',len(edges),'seconds',scene['generatedSeconds'],flush=True)
     return scene
 
 
 if __name__=='__main__':
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('feature');parser.add_argument('--root');args=parser.parse_args()
-    compile_scene(args.feature,ROOT/'data/extracted',ROOT/'data/scenes',args.root)
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('feature');parser.add_argument('--root');parser.add_argument('--scene-id');args=parser.parse_args()
+    compile_scene(args.feature,ROOT/'data/extracted',ROOT/'data/scenes',args.root,args.scene_id)

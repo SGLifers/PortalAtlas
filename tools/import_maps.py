@@ -10,11 +10,13 @@ import sys
 import time
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT))
+from server.map_variants import expanded_features,feature_root
 EXCLUDED={'MAP_Biome6','MAP_Biome6_Sanctum','MAP_Creative_EmptySpace','MAP_Creative_FlatEarth','MAP_Creative_Simulation','MAP_Creative_WetOcean','MAP_Simulation','MAP_Ozone','MAP_Ozone_Graffiti'}
 
 
 def available():
-    return sorted(set(re.findall(r'/GameFeatures/Maps/(MAP_[^/]+)/',(ROOT/'data/maps-index.json').read_text())))
+    return expanded_features(set(re.findall(r'/GameFeatures/Maps/(MAP_[^/]+)/',(ROOT/'data/maps-index.json').read_text())))
 
 
 def main():
@@ -29,6 +31,7 @@ def main():
     try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
     except BlockingIOError:raise SystemExit('Another import process is active')
     for mid in maps:
+        feature,selected_root=feature_root(mid)
         scene=ROOT/'data/scenes'/(mid+'.json')
         existing=json.loads(scene.read_text()) if scene.exists() else None
         if existing and not a.force and (not a.refresh or (existing.get('modelVersion',0)>=5 and existing.get('finalizeVersion')==1)):
@@ -37,14 +40,16 @@ def main():
         print('Importing',mid,flush=True);started=time.monotonic()
         try:
             with (local/(mid+'.log')).open('w') as log:
-                manifest=ROOT/'data/extracted'/(mid+'.json')
+                manifest=ROOT/'data/extracted'/(feature+'.json')
                 command='export-feature' if a.force or not manifest.exists() else 'export-terrain'
                 if existing and existing['source'].get('coverage',{}).get('missingStreaming'):command='export-feature'
                 if command=='export-feature' or json.loads(manifest.read_text()).get('terrainVersion',0)<1:
-                    subprocess.run([str(ROOT/'.tools/dotnet/dotnet'),'tools/AssetReader/bin/Release/net10.0/AssetReader.dll','data/install/Paks',command,mid,'data/extracted'],cwd=ROOT,env=env,check=True,timeout=1800,stdout=log,stderr=log)
+                    subprocess.run([str(ROOT/'.tools/dotnet/dotnet'),'tools/AssetReader/bin/Release/net10.0/AssetReader.dll','data/install/Paks',command,feature,'data/extracted'],cwd=ROOT,env=env,check=True,timeout=1800,stdout=log,stderr=log)
                 if json.loads(manifest.read_text()).get('blockingVersion')!=1:
-                    subprocess.run([str(ROOT/'.tools/dotnet/dotnet'),'tools/AssetReader/bin/Release/net10.0/AssetReader.dll','data/install/Paks','export-brush',mid,'data/extracted'],cwd=ROOT,env=env,check=True,timeout=600,stdout=log,stderr=log)
-                subprocess.run([sys.executable,'tools/compile_scene.py',mid],cwd=ROOT,env=env,check=True,timeout=3600,stdout=log,stderr=log)
+                    subprocess.run([str(ROOT/'.tools/dotnet/dotnet'),'tools/AssetReader/bin/Release/net10.0/AssetReader.dll','data/install/Paks','export-brush',feature,'data/extracted'],cwd=ROOT,env=env,check=True,timeout=600,stdout=log,stderr=log)
+                command=[sys.executable,'tools/compile_scene.py',feature]
+                if selected_root:command+=['--root',selected_root,'--scene-id',mid]
+                subprocess.run(command,cwd=ROOT,env=env,check=True,timeout=3600,stdout=log,stderr=log)
             data=json.loads(scene.read_text());report[mid]={'status':'ready','walls':len(data['nodes']),'edges':len(data['edges']),'geometryUsable':data['source']['geometryUsable'],'seconds':round(time.monotonic()-started,1)}
         except Exception as exc:report[mid]={'status':'failed','error':str(exc)};fail=True
         (ROOT/'data/import-report.json').write_text(json.dumps(report,indent=2));print(mid,report[mid],flush=True)

@@ -94,5 +94,6 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('maps',nargs='*');parser.add_argument('--all',action='store_true');args=parser.parse_args()
     paths=sorted((ROOT/'data/scenes').glob('MAP_*.json')) if args.all else [ROOT/'data/scenes'/(m+'.json') for m in args.maps]
     for path in paths:
-        manifest=json.loads((ROOT/'data/extracted'/(path.stem+'.json')).read_text());scene=finalize(json.loads(path.read_text()),manifest,ROOT/'data/extracted');save(scene,path)
+        current=json.loads(path.read_text());feature=current['source'].get('feature',path.stem)
+        manifest=json.loads((ROOT/'data/extracted'/(feature+'.json')).read_text());scene=finalize(current,manifest,ROOT/'data/extracted');save(scene,path)
         print(path.stem,len(scene['edges']),'edges',scene['source']['coverage'],flush=True)

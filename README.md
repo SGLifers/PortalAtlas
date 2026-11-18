@@ -100,12 +100,19 @@ one at a time. Large maps take longer because every directed placement is checke
 .venv/bin/python tools/import_maps.py --all-arenas
 ```
 
-`--all-arenas` imports 25 standalone arena/training features in this build.
+`--all-arenas` imports 31 standalone arena/training maps in this build, including
+six Simulation maps cooked inside the shared `MAP_Simulation` feature. Each has
+its own scene ID and selected root, so their portal layouts stay separate.
 Shared Ozone sublevel libraries are resolved as dependencies of Ozone Night. It is not a claim about which maps are in a particular playlist.
 Completed imports are reused; `--force` extracts and compiles them again.
 `--refresh` upgrades stale compiled models using the existing extracted assets.
 Cooked variants stay separate. The selected root is shown in source details;
 `tools/compile_scene.py MAP_Name --root /MAP_Name/OtherWorld` selects an alternative.
+For example, import Simulation Charlie with
+`.venv/bin/python tools/import_maps.py MAP_Simulation_Charlie`. Captures use the
+same batch controls as other maps. Representative Simulation material colors are
+available through the existing color importer; portal-only captures do not use
+geometry colors.
 
 ## Model and limits
 

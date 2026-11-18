@@ -817,3 +817,50 @@ original libraries and installed game/source data preserved; no host uploads,
 Discord calls, score DB writes or public publication. Browser2/tab1 is marked
 deliverable with completed run; Atlas PID1414907/session1366 left running.
 Final tests18 Node +57 Python pass; no remaining required work.
+
+## Separate Simulation/takedown maps — 2026-11-17
+
+User clarified that the upload index/files must include only current clues,
+discarding old images, and asked about takedown maps. Verified prior index already
+referenced only138 current PNGs; historical162 were extra ZIP files. Created an
+initial23-map new-only export, then captured six additional Simulation maps and
+built a superseding29-map new-only host package (see Portle handoff).
+
+Asset index revealed six independent roots in MAP_Simulation bundle: Anomaly,
+Charlie, Divide, Faceoff, Hectic, Moshpit. Previous all-arenas importer excluded
+this multi-root bundle. Added server/map_variants.py registry mapping stable
+MAP_Simulation_<Name> scene IDs to parent feature/explicit root. Expanded API/CLI
+map inventories expose six maps instead of ambiguous MAP_Simulation container.
+compile_scene --scene-id writes separate files while loading parent's extraction;
+checks scene ID matches its registered feature/root before reading/writing.
+source.feature preserves bundle identity; rootPackage/source.levels remain actual
+cooked sources. Import API and tools/import_maps.py handle parent extraction and
+explicit root/scene ID. finalize_scene CLI reads source.feature for variants.
+No roots are merged and no original scene is overwritten. README updated31 maps.
+
+Read-only asset export under import.lock/2 .NET CPUs succeeded (284 walls,22
+packages,6597 components,91 meshes,0 extraction errors). Command was existing
+AssetReader export-feature MAP_Simulation data/extracted with standard local
+key/mapping file env paths and bounded CPU settings; log ignored
+.local/simulation-export-2026-11-17.log. Then ran:
+.venv/bin/python tools/import_maps.py MAP_Simulation_Anomaly MAP_Simulation_Charlie MAP_Simulation_Divide MAP_Simulation_Faceoff MAP_Simulation_Hectic MAP_Simulation_Moshpit
+All ready:39/36/30/50/72/57 walls;154/124/54/238/374/289 edges;geometryUsable true,
+2/3/3/2/3/3 active levels. Same6 IDs through tools/import_colors.py succeeded;
+representative color coverage5.4/5.5/4.8/4.5/4.5/5.0%, unresolved surfaces neutral.
+Original25 scene SHA256 baseline unchanged. All new derived data stays ignored.
+
+Verified owned PID1414907/cwd before SIGTERM, restarted ./run.sh --port 8741 for
+API variant inventory: current PID1438385/session36482, .local/server.pid updated.
+No host/game workers touched. Browser2/tab1 reloaded, selected only the6 new maps,
+seed portle-simulation-progressive-2026-11-17,1280x800,progressive cumulative four
+first/random view per clue; portals on,geometry/labels/lines/all angles/cutaway off.
+Finished6/6 maps/36 images, no failures or browser errors. Save ZIP locally wrote
+.local/captures/capture-514d991796d94ee78fc6670df0baa842.zip (21071114 bytes).
+Proof .local/takedown-capture-complete-2026-11-17.png; tab marked deliverable, server
+left running. Viewed actual Faceoff clue6 in output package: portals only.
+
+60 Python tests passed in2.831s, including new inventory, root isolation on all6
+real scenes and guard against overwriting an unrelated map ID. Expected stale
+color revision fixture prints FAILED inside a passing test. Whitespace checks
+passed. Portle package validates all29 rounds/dropdown pages offline; no remote
+upload, Discord calls, token access, production score changes or public assets.

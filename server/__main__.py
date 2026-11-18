@@ -13,6 +13,7 @@ from urllib.parse import urlparse, unquote, parse_qs
 
 from .routing import route
 from .captures import save_capture
+from .map_variants import expanded_features,feature_root
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 DATA=ROOT/'data';WEB=ROOT/'web'
@@ -27,7 +28,7 @@ def map_name(mid):
 def features():
     path=DATA/'maps-index.json'
     if not path.exists():return []
-    return sorted(set(re.findall(r'/GameFeatures/Maps/(MAP_[^/]+)/',path.read_text())))
+    return expanded_features(set(re.findall(r'/GameFeatures/Maps/(MAP_[^/]+)/',path.read_text())))
 
 
 def scene(mid):
@@ -80,10 +81,14 @@ def import_map(mid):
             local=ROOT/'.local';local.mkdir(exist_ok=True)
             env=os.environ.copy();env.update(ATLAS_KEY_FILE=str(DATA/'key.txt'),ATLAS_MAPPING_FILE=str(DATA/'mappings.json'),OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1',DOTNET_PROCESSOR_COUNT='2')
             dotnet=ROOT/'.tools/dotnet/dotnet';reader=ROOT/'tools/AssetReader/bin/Release/net10.0/AssetReader.dll'
+            feature,selected_root=feature_root(mid)
             with (local/(mid+'.log')).open('w') as log:
-                subprocess.run([str(dotnet),str(reader),str(DATA/'install/Paks'),'export-feature',mid,str(DATA/'extracted')],cwd=ROOT,env=env,stdout=log,stderr=log,check=True,timeout=1800)
+                if not selected_root or not (DATA/'extracted'/(feature+'.json')).exists():
+                    subprocess.run([str(dotnet),str(reader),str(DATA/'install/Paks'),'export-feature',feature,str(DATA/'extracted')],cwd=ROOT,env=env,stdout=log,stderr=log,check=True,timeout=1800)
                 JOBS[mid]['phase']='Checking angles and movement'
-                subprocess.run([sys.executable,str(ROOT/'tools/compile_scene.py'),mid],cwd=ROOT,env=env,stdout=log,stderr=log,check=True,timeout=3600)
+                command=[sys.executable,str(ROOT/'tools/compile_scene.py'),feature]
+                if selected_root:command+=['--root',selected_root,'--scene-id',mid]
+                subprocess.run(command,cwd=ROOT,env=env,stdout=log,stderr=log,check=True,timeout=3600)
             JOBS[mid].update(status='complete',phase='Ready',finished=time.time())
         except Exception as exc:JOBS[mid].update(status='failed',phase=str(exc),finished=time.time())
         finally:lock.close()
