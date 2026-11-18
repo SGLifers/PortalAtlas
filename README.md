@@ -164,8 +164,16 @@ one downloadable ZIP. No images are uploaded or published to Portle.
 Choose a resolution (1280×800, 1600×1000 or 1920×1080), random camera angles per
 clue or one random angle per map, and progressive groups 1–N or one disjoint group
 per clue. **New seed** makes another distribution. Reusing the seed, map data and
-settings reproduces the portal groups and camera poses. The batch creates its own
-balanced groups without replacing browser-saved groups.
+settings reproduces the portal groups and camera poses. **Group sizes** defaults
+to growing groups: four portals in the first group, then increasingly larger
+additions covering every portal once. For 50 portals the groups are
+4, 5, 7, 9, 11, 14; cumulative screenshots show 4, 9, 16, 25, 36, 50 portals.
+Sizes scale with the map's portal count; four per group is the baseline with
+surplus allocated to later groups using weights 1, 3, 5, 7, 10. Maps below 24
+portals use four first (or all if fewer), then split the remainder evenly; a
+nondecreasing six-group sequence starting at four is impossible for those maps.
+**Even groups** retains the previous partition. Batch groups do not replace
+browser-saved groups from Wall groups, whose six random groups remain balanced.
 
 Captures show portals and hide labels, route lines, all angles, the grid and editing
 highlights. Geometry and cutaway default to off; enable either in the batch dialog

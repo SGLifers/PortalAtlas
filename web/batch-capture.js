@@ -19,8 +19,27 @@ export function randomCameraPose(box,aspect,fov,random){
   return {target,position:target.map((v,i)=>v+direction[i]*distance),azimuth,elevation,distance};
 }
 
-export function clueCapturePlan({seed,mapId,wallIds,box,aspect,fov=47,fixedCamera=false,cumulative=true}){
-  const groups=randomClueGroups(wallIds,seededRandom(`${seed}:${mapId}:groups`));
+// Four walls first; progressively larger additions thereafter. Largest-remainder
+// allocation preserves every wall exactly once and matches 4,5,7,9,11,14 at 50.
+export function progressiveGroupSizes(total){
+  if(!Number.isSafeInteger(total)||total<0)throw new Error('Invalid portal count.');
+  const first=Math.min(4,total),remaining=total-first;
+  // Tiny maps cannot have six nondecreasing groups starting at four. Allocate
+  // their remaining walls evenly; supported Portle maps all have at least 24.
+  if(total<24)return [first,...Array.from({length:5},(_,i)=>Math.floor(remaining/5)+(i>=5-remaining%5?1:0))];
+  const weights=[1,3,5,7,10],extra=total-24;
+  const quotas=weights.map(weight=>extra*weight/26),counts=quotas.map(Math.floor);
+  const order=quotas.map((quota,i)=>({i,fraction:quota-counts[i]})).sort((a,b)=>b.fraction-a.fraction||b.i-a.i);
+  for(let i=0,left=extra-counts.reduce((sum,count)=>sum+count,0);i<left;i++)counts[order[i].i]++;
+  return [4,...counts.map(count=>count+4)];
+}
+
+export function clueCapturePlan({seed,mapId,wallIds,box,aspect,fov=47,fixedCamera=false,cumulative=true,distribution='progressive'}){
+  if(!['progressive','even'].includes(distribution))throw new Error('Invalid portal distribution.');
+  const evenGroups=randomClueGroups(wallIds,seededRandom(`${seed}:${mapId}:groups`)),shuffled=evenGroups.flat();
+  let offset=0;
+  const groups=distribution==='even'?evenGroups:
+    progressiveGroupSizes(shuffled.length).map(size=>{const group=shuffled.slice(offset,offset+size);offset+=size;return group;});
   const random=seededRandom(`${seed}:${mapId}:camera`),first=randomCameraPose(box,aspect,fov,random);
   return {groups,clues:groups.map((group,index)=>({stage:index+1,walls:cumulative?groups.slice(0,index+1).flat():[...group],camera:fixedCamera||index===0?first:randomCameraPose(box,aspect,fov,random)}))};
 }

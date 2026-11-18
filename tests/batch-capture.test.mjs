@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {seededRandom,randomCameraPose,clueCapturePlan,CaptureZip,crc32,safeCaptureName} from '../web/batch-capture.js';
+import {seededRandom,randomCameraPose,clueCapturePlan,progressiveGroupSizes,CaptureZip,crc32,safeCaptureName} from '../web/batch-capture.js';
 
 const box={min:[-100,-10,-50],max:[90,30,70]},ids=Array.from({length:31},(_,i)=>`wall-${i}`);
 const settings={seed:'repeatable',mapId:'MAP_Example',wallIds:ids,box,aspect:1.6};
@@ -11,8 +11,27 @@ test('seeded batches reproduce groups/poses regardless of map processing order',
   assert.deepEqual(clueCapturePlan(settings),first);
   assert.notDeepEqual(clueCapturePlan({...settings,seed:'new distribution'}),first);
   assert.equal(new Set(first.groups.flat()).size,ids.length);
-  assert.deepEqual(first.clues.map(clue=>clue.walls.length),[6,11,16,21,26,31]);
+  assert.equal(first.clues[0].walls.length,4);
+  assert.equal(first.clues[5].walls.length,31);
   assert.ok(first.clues.every((clue,i)=>i===0||first.clues[i-1].walls.every(id=>clue.walls.includes(id))));
+});
+
+test('growing groups match the requested example, remain exclusive and end with full coverage',()=>{
+  assert.deepEqual(progressiveGroupSizes(50),[4,5,7,9,11,14]);
+  for(let count=0;count<=1000;count++){
+    const sizes=progressiveGroupSizes(count);
+    assert.equal(sizes.length,6);assert.equal(sizes[0],Math.min(4,count));
+    assert.equal(sizes.reduce((sum,size)=>sum+size,0),count);
+    assert.ok(sizes.every(size=>Number.isSafeInteger(size)&&size>=0));
+    if(count>=24)assert.ok(sizes.every((size,i)=>!i||size>=sizes[i-1]));
+  }
+  const wallIds=Array.from({length:50},(_,i)=>`id-${i}`),plan=clueCapturePlan({...settings,wallIds});
+  assert.deepEqual(plan.clues.map(clue=>clue.walls.length),[4,9,16,25,36,50]);
+  assert.equal(plan.groups.flat().length,50);assert.equal(new Set(plan.groups.flat()).size,50);
+  assert.deepEqual(new Set(plan.groups.flat()),new Set(wallIds));
+  assert.deepEqual(clueCapturePlan({...settings,distribution:'even'}).clues.map(clue=>clue.walls.length),[6,11,16,21,26,31]);
+  assert.throws(()=>progressiveGroupSizes(-1));assert.throws(()=>progressiveGroupSizes(2.5));
+  assert.throws(()=>clueCapturePlan({...settings,distribution:'bad'}));
 });
 
 test('fixed random angle and disjoint clue modes have the promised semantics',()=>{

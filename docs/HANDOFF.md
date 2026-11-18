@@ -726,3 +726,38 @@ rounds, never opens live scores or .env, and does not modify the source library.
 See Portle handoff for final archive validation/output path. No upload or live bot
 operation is part of this request. Atlas stays running at127.0.0.1:8741; no restart
 was needed. Keep all proprietary output artifacts ignored/outside Git.
+
+## Growing clue groups — implementation milestone, 2026-11-17
+
+User requested replacing even batch portal groups with progressively larger
+additions, minimum four portals first; example50 portals =4/5/7/9/11/14. Interpreted
+as disjoint new additions with cumulative screenshots4/9/16/25/36/50, stated to
+the user before capture. Added progressiveGroupSizes to batch-capture.js: baseline
+four in each group, remaining N-24 weighted1/3/5/7/10 across groups2–6 with largest
+remainder rounding. Group1 stays exactly4, all walls appear exactly once, later
+groups are nondecreasing. For tiny maps below24, first min(4,N), remainder evenly
+among five groups; cannot satisfy six nondecreasing groups starting4. All23 Portle
+answer maps exceed that limit. Existing manual Wall groups stay even/unchanged.
+
+Batch dialog Group sizes defaults to Growing groups; Even groups retains prior
+behavior. settings.distribution records the choice; seeded wall shuffle and
+camera streams stay independent. README documents incremental vs visible counts.
+18 Node tests passed, including invariants for N=0..1000, exact requested example,
+cumulative/nested/disjoint membership, legacy-even and camera/ZIP regressions.
+Latest batch5 tests, batch-ui syntax and whitespace checks passed after refactor.
+
+Previous Atlas listener was no longer running, so started ./run.sh --port8741
+(actual command uses --port 8741), session19997, verified listening PID1386730.
+Browser2 fresh tab1 atlocalhost8741 is capturing all25 maps/150 screenshots with
+seed portle-progressive-2026-11-17,1280x800,cumulative,growing groups,random angle
+per clue; geometry/labels/lines/all angles/cutaway off, portals on. No console
+errors so far; do not refresh until completed. Raw output expected in Downloads
+as portal-atlas-clues-portle-progressive-2026-11-17.zip.
+
+Pending: finish capture/download, validate groups and all PNGs, create uploadable
+Portle library and named PNG review ZIP using ignored Portle script
+.local/package-progressive-batch-2026-11-17.py (syntax passed). It uses prior
+Nov9 export images plus local originals for historical retention, excludes two
+non-answer maps, normalizes/publishes only into an isolated Nov17 output folder,
+exercises all23 maps using temporary scores, and preserves existing libraries.
+No hosted bot, Discord, production scores, tokens, game or host workers touched.
