@@ -761,3 +761,32 @@ Nov9 export images plus local originals for historical retention, excludes two
 non-answer maps, normalizes/publishes only into an isolated Nov17 output folder,
 exercises all23 maps using temporary scores, and preserves existing libraries.
 No hosted bot, Discord, production scores, tokens, game or host workers touched.
+
+### Browser download recovery — 2026-11-17
+
+First progressive run finished25/25 maps/150 PNGs with no errors. Browser normal
+Download ZIP click produced no file in Downloads; documented downloadMedia hung
+and reset its kernel, and waitForEvent(download) timed out. PageAssets inventory
+did not expose the blob archive. Never used raw browser sockets, injected JS,
+profiles or browser storage. Screenshot of that completed run was saved, but raw
+ZIP was not accessible. Added a supported user-facing Save ZIP locally option,
+then repeated the same deterministic batch to produce a usable artifact.
+
+New server/captures.py streams bounded ZIPs to private unique ignored
+.local/captures/capture-<uuid>.zip paths. Validates ZIP entries, path allowlist,
+manifest type/version, entry count, compressed/uncompressed size caps; deletes
+partial/invalid uploads. API requires local Host, exact same Origin and ZIP
+Content-Type; output files0600, directories0700, no overwrite/unpack/public serve.
+batch-ui retains the actual generated Blob and sends it only when Save ZIP locally
+is clicked; shows the saved path, blocks overlapping runs/saves. Normal Download
+ZIP remains available. README documents this fallback.
+
+57 Python tests passed in3.666s (expected stale-revision negative fixture prints
+FAILED inside its passing test). New tests cover byte-preserving private saves,
+non-overwrite, incomplete/bad/path-traversal cleanup, size limits and HTTP origin
+checks. Batch-ui syntax passes. Verified owned PID1386730/cwd before terminating
+and restarting Atlas for new backend: ./run.sh --port8741 (space before8741 in
+actual command), session1366, current verified PID1414907, .local/server.pid set.
+Browser2/tab1 was reloaded and second identical all-map batch started; do not
+refresh until it finishes. Next: Save ZIP locally, copy returned local archive to
+the expected Downloads filename and run the prepared Portle packaging script.

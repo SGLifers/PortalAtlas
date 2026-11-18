@@ -4,7 +4,7 @@ const $=id=>document.getElementById(id);
 const esc=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 export function setupBatchCapture(adapter){
-  let running=false,cancelled=false,downloadUrl=null;
+  let running=false,cancelled=false,downloadUrl=null,downloadBlob=null,saving=false;
   const readyMaps=()=>adapter.maps().filter(map=>map.ready&&!map.library&&map.nodes>0);
   function chosenMaps(){
     const scope=$('batch-scope').value;
@@ -14,7 +14,7 @@ export function setupBatchCapture(adapter){
   function summary(){
     const maps=chosenMaps();$('batch-summary').textContent=`${maps.length} ${maps.length===1?'map':'maps'} · ${maps.length*6} screenshots`;
     $('batch-map-options').classList.toggle('hidden',$('batch-scope').value!=='selected');
-    $('start-batch').disabled=running||!maps.length||!adapter.currentMap();
+    $('start-batch').disabled=running||saving||!maps.length||!adapter.currentMap();
   }
   $('open-batch-capture').onclick=()=>{
     $('batch-map-options').innerHTML=readyMaps().map(map=>`<label><input type="checkbox" value="${esc(map.id)}" checked> ${esc(map.name)}</label>`).join('');
@@ -27,8 +27,18 @@ export function setupBatchCapture(adapter){
   $('batch-dialog').addEventListener('cancel',event=>{if(running){event.preventDefault();cancel();}});
   function cancel(){if(!running||cancelled)return;cancelled=true;adapter.cancelLoad();$('cancel-batch').disabled=true;$('batch-status').textContent='Cancelling; completed maps will be kept. Restoring your view…';}
   $('cancel-batch').onclick=cancel;
+  $('batch-save-local').onclick=async()=>{
+    if(!downloadBlob||running||saving)return;
+    saving=true;summary();const button=$('batch-save-local');button.disabled=true;$('batch-local-path').textContent='Saving ZIP on this computer…';
+    try{
+      const response=await fetch('/api/captures',{method:'POST',headers:{'Content-Type':'application/zip'},body:downloadBlob});
+      const result=await response.json();if(!response.ok)throw new Error(result.error||'Local save failed.');
+      $('batch-local-path').textContent='Saved: '+result.path;
+    }catch(error){$('batch-local-path').textContent=error.message;}
+    finally{saving=false;button.disabled=false;summary();}
+  };
   $('start-batch').onclick=async()=>{
-    if(running)return;
+    if(running||saving)return;
     const maps=chosenMaps(),seed=$('batch-seed').value.trim();
     if(!maps.length)return;
     if(!seed){$('batch-status').textContent='Enter a seed or choose New seed.';return;}
@@ -41,6 +51,7 @@ export function setupBatchCapture(adapter){
     $('batch-settings').disabled=true;$('close-batch').disabled=true;$('start-batch').disabled=true;$('cancel-batch').disabled=false;
     $('batch-progress').value=0;$('batch-progress').max=maps.length*6;$('batch-report').textContent='';
     $('batch-download').classList.add('hidden');
+    $('batch-save-local').classList.add('hidden');$('batch-local-path').textContent='';downloadBlob=null;
     if(downloadUrl){URL.revokeObjectURL(downloadUrl);downloadUrl=null;}
     let completed=0;
     try{
@@ -81,7 +92,8 @@ export function setupBatchCapture(adapter){
     // Keep completed maps as a downloadable result even after cancellation/failure.
     try{
       await zip.add('manifest.json',new Blob([JSON.stringify(manifest,null,2)],{type:'application/json'}));
-      downloadUrl=URL.createObjectURL(zip.finish());
+      downloadBlob=zip.finish();downloadUrl=URL.createObjectURL(downloadBlob);
+      $('batch-save-local').classList.remove('hidden');
       const link=$('batch-download');link.href=downloadUrl;link.download=`portal-atlas-clues-${safeCaptureName(seed)}.zip`;link.classList.remove('hidden');
       $('batch-status').textContent=`${cancelled?'Cancelled':'Finished'} · ${manifest.maps.length} / ${maps.length} maps · ${completed} screenshots ready.`;
       $('batch-report').textContent=manifest.errors.length?manifest.errors.map(error=>`${error.name||'Batch'}: ${error.error}`).join('\n'):'Download the ZIP and review the images. Nothing was published to Portle.';

@@ -189,6 +189,9 @@ and keeps completed maps in the ZIP. Failed map loads are skipped and listed in
 both the report and manifest. The original map, camera, render resolution, layer
 settings and portal visibility are restored when the run finishes or is cancelled.
 The archive has a 384 MiB memory limit; choose smaller batches if it is reached.
+If browser downloads are unavailable, click **Save ZIP locally** after capture.
+Atlas saves the same archive under ignored `.local/captures/` and shows its full
+path. Each save creates a new private file; existing captures are preserved.
 The manifest records map IDs/names, revisions, portal groups, camera poses,
 cutaway/color settings and any errors. Its folders identify answers for author
 review; PNGs have generic clue filenames. Treat the archive as private clue data.

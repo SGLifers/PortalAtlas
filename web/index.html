@@ -104,7 +104,8 @@
   </fieldset>
   <progress id="batch-progress" value="0" max="1" aria-label="Batch capture progress"></progress>
   <p id="batch-status" role="status">Choose maps and start capturing.</p>
-  <div class="batch-actions"><button id="start-batch" class="primary" type="button">Start capture</button><button id="cancel-batch" class="secondary" type="button" disabled>Cancel</button><a id="batch-download" class="secondary hidden" download>Download ZIP</a></div>
+  <div class="batch-actions"><button id="start-batch" class="primary" type="button">Start capture</button><button id="cancel-batch" class="secondary" type="button" disabled>Cancel</button><a id="batch-download" class="secondary hidden" download>Download ZIP</a><button id="batch-save-local" class="secondary hidden" type="button">Save ZIP locally</button></div>
+  <p id="batch-local-path" role="status" style="overflow-wrap:anywhere"></p>
   <p id="batch-report"></p>
 </dialog>
 <dialog id="import-dialog"><div class="dialog-heading"><div><span class="eyebrow">YOUR INSTALLATION</span><h2>Import an arena</h2></div><button class="icon-button" data-close="import-dialog" aria-label="Close">×</button></div><p>Read a map's packages, resolve portal walls, and check its angle and movement graph.</p><div id="import-list"></div></dialog>

@@ -12,6 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, unquote, parse_qs
 
 from .routing import route
+from .captures import save_capture
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 DATA=ROOT/'data';WEB=ROOT/'web'
@@ -147,6 +148,11 @@ class Handler(BaseHTTPRequestHandler):
         if origin and origin!=f'http://{self.headers.get("Host")}':return self.respond({'error':'Local origin required'},403)
         try:
             size=int(self.headers.get('Content-Length','0'))
+            if urlparse(self.path).path=='/api/captures':
+                if origin!=f'http://{self.headers.get("Host")}' or self.headers.get('Content-Type')!='application/zip':
+                    return self.respond({'error':'Same-origin ZIP upload required'},403)
+                path=save_capture(self.rfile,size,ROOT/'.local/captures')
+                return self.respond({'path':str(path),'bytes':path.stat().st_size},201)
             if size<2 or size>100000:return self.respond({'error':'Invalid request size'},400)
             payload=json.loads(self.rfile.read(size));path=urlparse(self.path).path
             if path=='/api/route':

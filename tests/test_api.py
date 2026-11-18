@@ -1,5 +1,9 @@
 import importlib
 import json
+from io import BytesIO
+from pathlib import Path
+import tempfile
+import zipfile
 import threading
 import unittest
 import urllib.request
@@ -35,6 +39,23 @@ class ApiTests(unittest.TestCase):
             with self.subTest(path=path):self.assertIn(self.request(path)[0],(400,404))
     def test_cross_origin_writes_are_rejected(self):
         code,body,_=self.request('/api/import',{'map':'MAP_Academy'},'https://example.com');self.assertEqual(code,403)
+    def test_capture_save_requires_same_origin_zip_and_uses_private_export_directory(self):
+        content=BytesIO()
+        with zipfile.ZipFile(content,'w') as archive:
+            archive.writestr('manifest.json',json.dumps({'format':'portal-atlas-clue-batch','version':1}))
+        raw=content.getvalue()
+        with tempfile.TemporaryDirectory() as directory,patch.object(api,'ROOT',Path(directory)):
+            for origin in [None,'https://example.com',self.base]:
+                headers={'Content-Type':'application/zip'}
+                if origin:headers['Origin']=origin
+                request=urllib.request.Request(self.base+'/api/captures',data=raw,headers=headers)
+                if origin==self.base:
+                    with urllib.request.urlopen(request,timeout=5) as response:
+                        self.assertEqual(response.status,201);path=Path(json.loads(response.read())['path'])
+                        self.assertEqual(path.parent,Path(directory)/'.local/captures');self.assertEqual(path.read_bytes(),raw)
+                else:
+                    with self.assertRaises(urllib.error.HTTPError) as error:urllib.request.urlopen(request,timeout=5)
+                    self.assertEqual(error.exception.code,403)
     def test_dns_rebinding_host_is_rejected(self):
         request=urllib.request.Request(self.base+'/api/maps',headers={'Host':'foreign.example'})
         with self.assertRaises(urllib.error.HTTPError) as error:urllib.request.urlopen(request,timeout=5)
