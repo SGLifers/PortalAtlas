@@ -746,8 +746,8 @@ camera streams stay independent. README documents incremental vs visible counts.
 cumulative/nested/disjoint membership, legacy-even and camera/ZIP regressions.
 Latest batch5 tests, batch-ui syntax and whitespace checks passed after refactor.
 
-Previous Atlas listener was no longer running, so started ./run.sh --port8741
-(actual command uses --port 8741), session19997, verified listening PID1386730.
+Previous Atlas listener was no longer running, so started ./run.sh --port 8741,
+session19997, verified listening PID1386730.
 Browser2 fresh tab1 atlocalhost8741 is capturing all25 maps/150 screenshots with
 seed portle-progressive-2026-11-17,1280x800,cumulative,growing groups,random angle
 per clue; geometry/labels/lines/all angles/cutaway off, portals on. No console
@@ -785,8 +785,35 @@ ZIP remains available. README documents this fallback.
 FAILED inside its passing test). New tests cover byte-preserving private saves,
 non-overwrite, incomplete/bad/path-traversal cleanup, size limits and HTTP origin
 checks. Batch-ui syntax passes. Verified owned PID1386730/cwd before terminating
-and restarting Atlas for new backend: ./run.sh --port8741 (space before8741 in
-actual command), session1366, current verified PID1414907, .local/server.pid set.
+and restarting Atlas for new backend: ./run.sh --port 8741, session1366, current
+verified PID1414907, .local/server.pid set.
 Browser2/tab1 was reloaded and second identical all-map batch started; do not
 refresh until it finishes. Next: Save ZIP locally, copy returned local archive to
 the expected Downloads filename and run the prepared Portle packaging script.
+
+### Progressive captures — final verification, 2026-11-17
+
+Second all-map run completed25/25 maps and150 images with no errors. Save ZIP
+locally succeeded through normal UI and returned:
+.local/captures/capture-6e1ece653d32447a9d333a846a4c907e.zip
+Copied this exact artifact to /home/lambchopper67/Downloads/
+portal-atlas-clues-portle-progressive-2026-11-17.zip for packaging. PNGs1280x800,
+all150 unique, no metadata. All25 manifests have the requested portal-only layer
+flags/cutoff null; groups cover every wall once and cumulative visibility is
+correct. All23 Portle maps start4, groups nondecreasing, final clue covers all.
+Actual50-portal Training map matches exact4/5/7/9/11/14 additions and4/9/16/25/36/50
+visible counts. Academy69:4/6/9/13/16/21 additions,4/10/19/32/48/69 visible. Dought447:
+4/20/53/85/118/167 additions,4/24/77/162/280/447 visible. HangmanR3 tiny-map fallback
+is outside Portle's answer list. All25 source scene hashes remained unchanged.
+
+Completion proof .local/batch-progressive-complete-2026-11-17.png shows selected
+growing groups, completed progress and saved file path. Unmodified extracted
+Academy clues1/6 at .local/progressive-academy-01-2026-11-17.png and -06-.png;
+viewed clue1: four apertures only, no geometry/labels/lines/grid/cutaway.
+Portle packaging passed for23 maps/138 new clues, retained162 historical files,
+300 PNGs total,58.17MiB host-ready ZIP plus a separate138-PNG named review ZIP.
+Detailed outputs, hashes and upload directions are in Portle handoff. Both
+original libraries and installed game/source data preserved; no host uploads,
+Discord calls, score DB writes or public publication. Browser2/tab1 is marked
+deliverable with completed run; Atlas PID1414907/session1366 left running.
+Final tests18 Node +57 Python pass; no remaining required work.
