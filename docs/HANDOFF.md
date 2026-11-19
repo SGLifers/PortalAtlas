@@ -988,3 +988,19 @@ Outskirts still has no scene and was not fabricated/captured. Original scenes,
 libraries, previous archives, scores/configuration and live bot remain unchanged.
 No remote upload, public publication or hosting action. Required regeneration
 and package work is complete; deployment remains the user's action.
+
+## Source pushed to GitHub — 2026-11-19
+
+User explicitly requested pushing both repos. Fetched origin/main:0 remote-only
+/4 local-only commits. Audited12 outgoing source blobs across those commits;
+no proprietary assets/private runtime paths or credential-token/private-key
+patterns. git diff --check passed. Fresh taskset -c 2-3 bundled-node --test
+--test-isolation=none --test-reporter=tap tests/*.test.mjs passed18 tests;
+log .local/tests-prepush-2026-11-19.log. Portle's150 tests passed independently.
+
+git push origin HEAD:main succeeded, advancing SGLifers/PortalAtlas main from
+5714918 to211daeb (dynamic growing groups with four minimum and capture docs).
+A final documentation-only commit records this verified rollout and is pushed
+as well. Source/tests/docs only: no screenshots, extracted geometry, installed
+assets, credentials or private settings. No force push/conflicts. Raw captures
+and upload ZIPs stay private/local; no hosting restart or asset publication.
