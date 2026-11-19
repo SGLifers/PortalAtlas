@@ -864,3 +864,35 @@ real scenes and guard against overwriting an unrelated map ID. Expected stale
 color revision fixture prints FAILED inside a passing test. Whitespace checks
 passed. Portle package validates all29 rounds/dropdown pages offline; no remote
 upload, Discord calls, token access, production score changes or public assets.
+
+## Dynamic first-clue portal count — 2026-11-19
+
+User explicitly superseded the fixed-four first clue: portal counts must be
+dynamic. Updated web/batch-capture.js progressiveGroupSizes to reserve one wall
+per each of six groups, then apportion N-6 walls with weights1/2/3/4/5/6 using
+largest-remainder rounding (ties favor later groups). The first group now scales
+approximately as1+(N-6)/21. All groups are positive/nondecreasing for N>=6 and
+cover each wall exactly once. For N<6, reveal one wall per initial clue with
+empty trailing groups. Six clues remain fixed; seeded shuffle/camera independence,
+even groups and existing saved manual groups are preserved.
+
+Examples:30 walls adds2/3/4/6/7/8;50 adds3/5/7/9/12/14, visible3/8/15/24/36/50;
+447 adds22/43/64/85/106/127. Updated batch dialog label and README to remove the
+four-wall promise. Portle's separate manual-clue guide documents the new policy.
+Old PNGs, published sets and archived Nov17 packaging scripts remain unchanged;
+recapture/republish is required to use these counts in gameplay. Do not reuse
+old one-off package validators that explicitly require four walls first.
+
+Validation: node --test --test-isolation=none --test-reporter=tap tests/*.test.mjs
+passed18 tests using the bundled Node path above. Direct in-process isolation was
+used to observe every subtest rather than the sandbox's file-only worker output.
+Tests sweep N=0..1000 for exact coverage, integer/nonnegative counts, positive
+nondecreasing groups for N>=6, dynamic first-clue rounding, and tiny-map behavior;
+existing nested/disjoint memberships, deterministic seeds, camera/ZIP/color/group
+tests pass. node --check web/batch-capture.js and git diff --check pass.
+Offline sizes validated against all29 available Portle map scenes; ignored
+.local/dynamic-clue-counts-2026-11-19.json records additions/cumulative counts.
+Outskirts still lacks a source scene. No source assets, screenshots, clue library,
+scores, credentials, live server/browser or game-host processes were changed.
+Static frontend changes apply after refreshing Atlas; no backend restart needed.
+No capture regeneration or upload was requested/performed in this turn.
