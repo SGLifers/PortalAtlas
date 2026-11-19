@@ -19,18 +19,23 @@ export function randomCameraPose(box,aspect,fov,random){
   return {target,position:target.map((v,i)=>v+direction[i]*distance),azimuth,elevation,distance};
 }
 
-// Scale all six groups to the map. Reserve one wall per clue when possible,
+// Scale all six groups to the map. Reserve four walls per clue when possible,
 // then apportion the remainder with increasing weights and largest-remainder
 // rounding. Every wall belongs to exactly one group.
 export function progressiveGroupSizes(total){
   if(!Number.isSafeInteger(total)||total<0)throw new Error('Invalid portal count.');
-  const weights=[1,2,3,4,5,6];
-  if(total<weights.length)return weights.map((_,i)=>i<total?1:0);
-  const extra=total-weights.length,weightTotal=weights.reduce((sum,weight)=>sum+weight,0);
+  const weights=[1,2,3,4,5,6],minimum=4;
+  if(total<minimum*weights.length){
+    // Six nondecreasing groups starting at four need at least 24 walls.
+    // Keep the first-clue minimum and share the remainder on smaller maps.
+    const first=Math.min(minimum,total),remaining=total-first,later=weights.length-1;
+    return [first,...Array.from({length:later},(_,i)=>Math.floor(remaining/later)+(i>=later-remaining%later?1:0))];
+  }
+  const extra=total-minimum*weights.length,weightTotal=weights.reduce((sum,weight)=>sum+weight,0);
   const quotas=weights.map(weight=>extra*weight/weightTotal),counts=quotas.map(Math.floor);
   const order=quotas.map((quota,i)=>({i,fraction:quota-counts[i]})).sort((a,b)=>b.fraction-a.fraction||b.i-a.i);
   for(let i=0,left=extra-counts.reduce((sum,count)=>sum+count,0);i<left;i++)counts[order[i].i]++;
-  return counts.map(count=>count+1);
+  return counts.map(count=>count+minimum);
 }
 
 export function clueCapturePlan({seed,mapId,wallIds,box,aspect,fov=47,fixedCamera=false,cumulative=true,distribution='progressive'}){

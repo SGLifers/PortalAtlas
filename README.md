@@ -172,15 +172,18 @@ Choose a resolution (1280×800, 1600×1000 or 1920×1080), random camera angles 
 clue or one random angle per map, and progressive groups 1–N or one disjoint group
 per clue. **New seed** makes another distribution. Reusing the seed, map data and
 settings reproduces the portal groups and camera poses. **Group sizes** defaults
-to growing groups scaled to each map's portal count. Reserve one portal per
+to growing groups scaled to each map's portal count, with a minimum of four
+portals in the first clue. Reserve four portals per
 group, then distribute the remaining portals with weights 1, 2, 3, 4, 5, 6,
-rounding by largest remainder (ties favor later groups). There is no fixed first
-group size. For 50 portals the groups are 3, 5, 7, 9, 12, 14; cumulative
-screenshots show 3, 8, 15, 24, 36, 50 portals. A 30-portal map starts with 2;
-a 447-portal map starts with 22. Every portal appears in exactly one group and
-each later group is at least as large as the previous one. Maps with fewer than
-six portals reveal one new portal per clue until exhausted; trailing groups are
-empty. Changing this planner affects new captures; existing PNGs keep their
+rounding by largest remainder (ties favor later groups). For 50 portals the
+groups are 5, 7, 8, 9, 10, 11; cumulative screenshots show 5, 12, 20, 29, 39, 50
+portals. A 30-portal map starts with 4; a 447-portal map starts with 24. Every
+portal appears in exactly one group, and for maps with at least 24 portals each
+later group is at least as large as the previous one. Smaller maps start with
+four (or all portals if fewer than four exist) and divide the rest evenly among
+the remaining five clues; six nondecreasing groups starting at four are
+impossible below 24 portals. Changing this planner affects new captures;
+existing PNGs keep their
 original portal counts and must be recaptured to use the new progression.
 **Even groups** retains the previous partition. Batch groups do not replace
 browser-saved groups from Wall groups, whose six random groups remain balanced.

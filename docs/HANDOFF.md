@@ -896,3 +896,25 @@ Outskirts still lacks a source scene. No source assets, screenshots, clue librar
 scores, credentials, live server/browser or game-host processes were changed.
 Static frontend changes apply after refreshing Atlas; no backend restart needed.
 No capture regeneration or upload was requested/performed in this turn.
+
+### Four minimum with larger starts on large maps — 2026-11-19
+
+User clarified the first clue must have a minimum of four, while maps with many
+more portals must start higher. This supersedes the one-wall baseline above.
+progressiveGroupSizes now reserves four per group, apportions N-24 using the same
+increasing1–6 weights and largest-remainder rounding. First-clue size scales
+approximately as4+(N-24)/21, with a minimum of4 on every supported map. Example
+30 adds4/5/5/5/5/6;50 adds5/7/8/9/10/11 (visible5/12/20/29/39/50);447 adds
+24/44/64/85/105/125. All groups stay nondecreasing for N>=24. Below24, start
+min(4,N) and split the rest evenly across five later groups; a nondecreasing
+six-group progression is mathematically impossible there with this minimum.
+All29 available Portle scenes exceed that limit. UI/README/Portle manual guide
+now state four as a minimum that scales upward, rather than a fixed first count.
+
+Validation: same Node command above passed18 tests, including exhaustive counts
+0..1000 for minimum, scaling, exact integer totals and growing additions, plus
+deterministic/cumulative/disjoint/camera/ZIP regressions. Rechecked all29 real
+map totals and updated ignored .local/dynamic-clue-counts-2026-11-19.json.
+node --check web/batch-capture.js and git diff --check passed. No screenshot
+regeneration, clue publishing, score/config changes, server restart or deployment.
+Existing screenshot sets need recapturing/republishing to use the revised counts.

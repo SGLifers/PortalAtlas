@@ -11,28 +11,33 @@ test('seeded batches reproduce groups/poses regardless of map processing order',
   assert.deepEqual(clueCapturePlan(settings),first);
   assert.notDeepEqual(clueCapturePlan({...settings,seed:'new distribution'}),first);
   assert.equal(new Set(first.groups.flat()).size,ids.length);
-  assert.equal(first.clues[0].walls.length,2);
+  assert.equal(first.clues[0].walls.length,4);
   assert.equal(first.clues[5].walls.length,31);
   assert.ok(first.clues.every((clue,i)=>i===0||first.clues[i-1].walls.every(id=>clue.walls.includes(id))));
 });
 
 test('growing groups scale every clue to map size and retain full coverage',()=>{
-  assert.deepEqual(progressiveGroupSizes(30),[2,3,4,6,7,8]);
-  assert.deepEqual(progressiveGroupSizes(50),[3,5,7,9,12,14]);
-  assert.deepEqual(progressiveGroupSizes(447),[22,43,64,85,106,127]);
+  assert.deepEqual(progressiveGroupSizes(24),[4,4,4,4,4,4]);
+  assert.deepEqual(progressiveGroupSizes(30),[4,5,5,5,5,6]);
+  assert.deepEqual(progressiveGroupSizes(50),[5,7,8,9,10,11]);
+  assert.deepEqual(progressiveGroupSizes(447),[24,44,64,85,105,125]);
   for(let count=0;count<=1000;count++){
     const sizes=progressiveGroupSizes(count);
     assert.equal(sizes.length,6);
     assert.equal(sizes.reduce((sum,size)=>sum+size,0),count);
     assert.ok(sizes.every(size=>Number.isSafeInteger(size)&&size>=0));
-    if(count>=6){
-      assert.ok(sizes.every(size=>size>=1));
+    assert.ok(sizes[0]>=Math.min(4,count));
+    if(count>=24){
+      assert.ok(sizes.every(size=>size>=4));
       assert.ok(sizes.every((size,i)=>!i||size>=sizes[i-1]));
-      assert.ok(Math.abs(sizes[0]-(1+(count-6)/21))<1);
-    }else assert.deepEqual(sizes,Array.from({length:6},(_,i)=>i<count?1:0));
+      assert.ok(Math.abs(sizes[0]-(4+(count-24)/21))<1);
+    }else{
+      assert.equal(sizes[0],Math.min(4,count));
+      assert.ok(Math.max(...sizes.slice(1))-Math.min(...sizes.slice(1))<=1);
+    }
   }
   const wallIds=Array.from({length:50},(_,i)=>`id-${i}`),plan=clueCapturePlan({...settings,wallIds});
-  assert.deepEqual(plan.clues.map(clue=>clue.walls.length),[3,8,15,24,36,50]);
+  assert.deepEqual(plan.clues.map(clue=>clue.walls.length),[5,12,20,29,39,50]);
   assert.equal(plan.groups.flat().length,50);assert.equal(new Set(plan.groups.flat()).size,50);
   assert.deepEqual(new Set(plan.groups.flat()),new Set(wallIds));
   assert.deepEqual(clueCapturePlan({...settings,distribution:'even'}).clues.map(clue=>clue.walls.length),[6,11,16,21,26,31]);
