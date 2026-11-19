@@ -950,3 +950,41 @@ screenshots regenerated, clue packs published or score/config data changed.
 Next: connect browser, run batch with current frontend, Save ZIP locally, validate
 against progressiveGroupSizes and source IDs, package only29 maps/174 current
 PNGs plus30-name roster, and exercise six clue stages in temporary databases.
+
+## Headless dynamic clue regeneration — complete, 2026-11-19
+
+User explicitly authorized a local headless browser, superseding the previous
+browser-tool blocker for this task. Installed official Playwright Chromium151.0.7922.34
+into ignored .local/browsers using the bundled Playwright1.62.1 CLI. Ran the
+existing Atlas UI and Three.js renderer via ignored
+.local/capture-headless-2026-11-19.cjs, with a fresh isolated browser context,
+software SwiftShader and process affinity CPUs0–3. No game/Steam/host workers.
+
+Capture command, from Atlas:
+PLAYWRIGHT_BROWSERS_PATH=/home/lambchopper67/Documents/ChatGPT/Splitgate/PortalAtlas/.local/browsers taskset -c 0-3 /home/lambchopper67/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node .local/capture-headless-2026-11-19.cjs
+Log .local/headless-capture-2026-11-19.log. Browser drove actual Batch clues UI,
+selected exactly29 supported maps, seed portle-dynamic-min4-2026-11-19,1280x800,
+per-clue random camera, cumulative progressive groups; portals on, geometry/
+labels/lines/allAngles/cutaway off. Finished29/29 with174 PNGs, no page errors or
+failed HTTP resources. Save ZIP locally used the existing same-origin endpoint.
+
+Raw archive .local/captures/capture-6463f6f68f0c4de3811de7ed7c87400e.zip,
+92261198 bytes, SHA25632227fca84a350cf8130fff48e85e0907add0ea8f6937b162abeb0a06cf7f532.
+Result .local/headless-capture-result-2026-11-19.json; native completion screenshot
+.local/headless-batch-complete-2026-11-19.png. Browser closed cleanly, child process
+exited0. Atlas server remains PID270859 at127.0.0.1:8741; no restart was needed.
+
+Portle independently validated every PNG, matched exact groups/wall IDs against
+current JS planner and source scenes, checked random camera plans, layer flags,
+full cumulative coverage and six-stage practice loading for each map. All29
+scene SHA256 values match .local/headless-source-baseline-2026-11-19.json. Samples
+viewed unmodified: Simulation Divide clue1 shows four portal walls; Drought
+clues1/6 show24/all447; Academy clue6 contains only its portals. No labels or
+architecture. QA PNGs .local/dynamic-qa-MAP_<name>-<stage>.png stay private.
+
+New-only host/review ZIPs are in Downloads, documented in Portle handoff. Drought
+review folder uses corrected canonical name despite Atlas's older display label.
+Outskirts still has no scene and was not fabricated/captured. Original scenes,
+libraries, previous archives, scores/configuration and live bot remain unchanged.
+No remote upload, public publication or hosting action. Required regeneration
+and package work is complete; deployment remains the user's action.
