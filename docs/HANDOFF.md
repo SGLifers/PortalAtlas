@@ -918,3 +918,35 @@ map totals and updated ignored .local/dynamic-clue-counts-2026-11-19.json.
 node --check web/batch-capture.js and git diff --check passed. No screenshot
 regeneration, clue publishing, score/config changes, server restart or deployment.
 Existing screenshot sets need recapturing/republishing to use the revised counts.
+
+## Screenshot regeneration requested — pending browser, 2026-11-19
+
+User explicitly requested regenerating screenshots using the final minimum-four,
+dynamic scaling policy above. Intended batch: the29 currently available Portle
+maps (all original23 plus six Simulation),174 screenshots,1280x800, six cumulative
+growing groups, random camera per clue; portals on and geometry/labels/lines/
+allAngles/cutaway off. Outskirts has no source scene and cannot be captured yet.
+Use current Portle display names when naming review folders (Drought).
+Existing request for new-only output still applies: fresh pack, no historical
+PNGs, preserve all original libraries/backups/player databases.
+
+Capture is currently blocked by session tooling: cua.getState returned no apps
+or browsers; cua.createBrowserTab('iab', 'http://127.0.0.1:8741', {visible:true})
+returned "Browser is not available: iab". CUA completion recorded this outcome.
+Plugin discovery found cloud browser options, which cannot reach loopback Atlas;
+none were installed/suggested. Asked user to enable a connected browser/open
+Atlas. Do not use a different browser automation technology unless the user
+explicitly requests it, as required by the computer-use tool instructions.
+There is no native Atlas capture CLI: server/captures.py only saves ZIPs generated
+by the browser. Existing two raw captures under .local/captures are Nov17's old
+fixed-four distribution, so cannot satisfy this regeneration request.
+
+Atlas was not listening on8741. Started approved ./run.sh --port 8741 in exec
+session93982. curl --fail --silent --show-error --max-time 3
+http://127.0.0.1:8741/api/maps returned successfully after launch; temporary
+response /tmp/portle-regenerate-maps-2026-11-19.json. Leave this Atlas server up
+for the user's browser. No live game/host/Portle bot process was touched. No
+screenshots regenerated, clue packs published or score/config data changed.
+Next: connect browser, run batch with current frontend, Save ZIP locally, validate
+against progressiveGroupSizes and source IDs, package only29 maps/174 current
+PNGs plus30-name roster, and exercise six clue stages in temporary databases.
